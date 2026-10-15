@@ -29,6 +29,9 @@ export class IncusClient {
    * 例如 https://2a06:de04:10:1250:::8443 → https://[2a06:de04:10:1250::]:8443
    */
   private static normalizeUrl(url: string): string {
+    // 节点没配 url 时（新建节点漏填 / 库里为 NULL）不能让它崩在这里：
+    // new URL(undefined) 会抛错 → 进 catch → undefined.match() → TypeError
+    if (typeof url !== 'string' || !url.trim()) return ''
     try {
       // 如果 new URL() 能正常解析，说明格式已经正确
       new URL(url)
