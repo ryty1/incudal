@@ -539,7 +539,7 @@ export default async function oauthRoutes(fastify: FastifyInstance) {
       username: loginData.username,
       role: loginData.role as 'admin' | 'user',
       sid: sessionId
-    }, { expiresIn: '7d' })
+    }, { expiresIn: '1d' })
 
     return {
       token: accessToken,
