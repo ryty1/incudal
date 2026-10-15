@@ -43,7 +43,7 @@ interface GuardLog {
 }
 
 interface Overview {
-  promo: { total: number; active: number; used: number; expired: number; totalDiscount: number }
+  promo: { total: number; active: number; used: number; expired: number; void: number; totalDiscount: number }
   guard: {
     logCount: number
     lastRunAt: string | null
@@ -632,6 +632,7 @@ onMounted(() => {
           {{ $t('admin.botBridge.overview.promoActive') }} {{ overview.promo.active }} ·
           {{ $t('admin.botBridge.overview.promoUsed') }} {{ overview.promo.used }} ·
           {{ $t('admin.botBridge.overview.promoExpired') }} {{ overview.promo.expired }}
+          · {{ $t('admin.botBridge.overview.promoVoid') }} {{ overview.promo.void }}
         </div>
       </div>
       <div class="card p-4">

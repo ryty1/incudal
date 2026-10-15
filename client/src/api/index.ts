@@ -3555,7 +3555,7 @@ const api = {
 
     // 概览：兑换码 / 守护日志 / 绑定数
     getBotBridgeOverview: (): Promise<{
-      promo: { total: number; active: number; used: number; expired: number; totalDiscount: number }
+      promo: { total: number; active: number; used: number; expired: number; void: number; totalDiscount: number }
       guard: {
         logCount: number
         lastRunAt: string | null

@@ -3872,6 +3872,7 @@ export default {
                 promoActive: '可用',
                 promoUsed: '已核銷',
                 promoExpired: '已過期',
+                promoVoid: '已作廢',
                 promoDiscount: '抵扣總額',
                 guardLogs: '守護日誌',
                 bindings: '已綁定 TG 使用者',

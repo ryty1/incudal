@@ -745,7 +745,7 @@ export default async function adminBotBridgeRoutes(app: FastifyInstance) {
   // GET /api/admin/bot/overview —— 三个模块的概览数字，供后台卡片使用。
   app.get('/api/admin/bot/overview', { ...adminOnly, config: READ_LIMIT }, async () => {
     const now = new Date()
-    const [totalCodes, activeCodes, usedCodes, expiredCodes, guardLogCount, lastGuardRun, boundUsers] =
+    const [totalCodes, activeCodes, usedCodes, expiredCodes, voidCodes, guardLogCount, lastGuardRun, boundUsers] =
       await Promise.all([
         prisma.prisma.botPromoCode.count({ where: { telegramUserId: { not: null } } }),
         prisma.prisma.botPromoCode.count({ where: { telegramUserId: { not: null }, status: 'active', expiresAt: { gte: now } } }),
@@ -753,6 +753,8 @@ export default async function adminBotBridgeRoutes(app: FastifyInstance) {
         prisma.prisma.botPromoCode.count({
           where: { telegramUserId: { not: null }, status: 'active', expiresAt: { lt: now } },
         }),
+        // 已作废（void）：既不算可用也不算已核销，之前没归类导致「总数 ≠ 可用+已核销+已过期」
+        prisma.prisma.botPromoCode.count({ where: { telegramUserId: { not: null }, status: 'void' } }),
         prisma.prisma.botGuardLog.count(),
         prisma.prisma.botGuardLog.findFirst({ orderBy: { runAt: 'desc' } }),
         prisma.prisma.userTelegramBinding.count(),
@@ -764,6 +766,7 @@ export default async function adminBotBridgeRoutes(app: FastifyInstance) {
         active: activeCodes,
         used: usedCodes,
         expired: expiredCodes,
+        void: voidCodes,
         totalDiscount: Number(
           (await prisma.prisma.botPromoCode.aggregate({ _sum: { amount: true } }))._sum.amount || 0
         ),
