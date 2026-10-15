@@ -1,0 +1,18 @@
+{
+  "version": "v0.0.1",
+  "generatedAt": "2026-10-09T03:10:08Z",
+  "files": {
+    "linux-amd64": {
+      "name": "incudal-agent-linux-amd64",
+      "sha256": "9a8d7593026f205bf9d2d942ce4fa2cf09abd69673ca85d99bde26c4ca2057e8",
+      "size": 6647968,
+      "gzip": false
+    },
+    "linux-arm64": {
+      "name": "incudal-agent-linux-arm64",
+      "sha256": "b720770b3cb4e891d3f5d0f1cc7241bc91885863bb3d26e4aaf05c59cd8016c4",
+      "size": 6095008,
+      "gzip": false
+    }
+  }
+}
