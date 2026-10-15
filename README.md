@@ -86,8 +86,6 @@ git clone git@github.com:ryty1/incudal.git incudal
 cd incudal
 ```
 
-> 仓库地址：**https://github.com/ryty1/incudal**（基于官方 qwer-xyz/incudal 修改版）
->
 > 服务器无法直连 GitHub 时，可本地克隆后打包上传：
 > ```bash
 > # 本地
