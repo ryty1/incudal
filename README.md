@@ -1,3 +1,7 @@
+> **本项目基于官方 [qwer-xyz/incudal](https://github.com/qwer-xyz/incudal) 修改而来，并非官方版本。**
+> 仓库：https://github.com/ryty1/incudal ｜ 遇到问题请勿向官方提 issue。
+> 改动清单见本文件末尾「附：与原版的差异」。
+
 # Incudal 面板 · 部署与运维手册
 
 > 面向单机自托管：Incus NAT-VPS 销售面板（app + PostgreSQL + Redis），
@@ -72,10 +76,27 @@
 
 ```bash
 mkdir -p /home/docker && cd /home/docker
-# 解压源码包（或 git clone）
-unzip incudal-source-YYYYMMDD-HHMMSS.zip
+
+# 方式一：SSH（需先在仓库 Settings → Deploy keys 加部署密钥，勾 Allow write access）
+git clone git@github.com:ryty1/incudal.git incudal
+
+# 方式二：HTTPS
+# git clone https://github.com/ryty1/incudal.git incudal
+
 cd incudal
 ```
+
+> 仓库地址：**https://github.com/ryty1/incudal**（基于官方 qwer-xyz/incudal 修改版）
+>
+> 服务器无法直连 GitHub 时，可本地克隆后打包上传：
+> ```bash
+> # 本地
+> git clone git@github.com:ryty1/incudal.git
+> tar czf incudal.tar.gz --exclude='.git' incudal
+> scp incudal.tar.gz root@<服务器IP>:/home/docker/
+> # 服务器
+> cd /home/docker && tar xzf incudal.tar.gz && cd incudal
+> ```
 
 ### 2. 准备配置
 
