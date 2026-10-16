@@ -653,13 +653,78 @@ export default async function botBridgeRoutes(fastify: FastifyInstance) {
       return { available: false, reason: '容量查询失败', cpu, memory, disk }
     }
 
+
+      // ── 还能开几台：只统计【在线且未被流量锁流】的节点 ──
+      // 口径与 selectAvailableHost 完全一致：
+      //   剩余CPU   = cpuAllowanceMax - max(实例实时求和, hosts.cpuUsed)
+      //   剩余内存  = memoryMax      - max(实例实时求和, hosts.memoryUsed)
+      //   单节点可开 = min(剩余CPU / 套餐CPU, 剩余内存 / 套餐内存)   ← 按最小的算
+      //   只舍不入（Math.floor）；磁盘/端口不再限制
+      let slots = 0
+      let slotBottleneck: string | null = null
+      const slotHosts: Array<{ hostId: number; name: string; slots: number; bottleneck: string }> = []
+      try {
+        const candidates = await prisma.prisma.host.findMany({
+          where: {
+            ...(packageHostIds.length > 0 ? { id: { in: packageHostIds } } : {}),
+            status: 'online',
+            trafficBlocked: false,
+          } as any,
+          select: {
+            id: true,
+            name: true,
+            cpuAllowanceMax: true,
+            memoryMax: true,
+            cpuUsed: true,
+            memoryUsed: true,
+            instances: {
+              where: { status: { not: 'deleted' } },
+              select: { cpu: true, memory: true },
+            },
+          },
+        })
+
+        for (const h of candidates as any[]) {
+          const cpuAllow = Number(h.cpuAllowanceMax ?? 0)
+          const memMax = Number(h.memoryMax ?? 0)
+          // 未配置配额的节点开不了机（与 selectAvailableHost 一致）
+          if (!(cpuAllow > 0) || !(memMax > 0)) continue
+
+          const instCpu = (h.instances || []).reduce((sum: number, i: any) => sum + Number(i.cpu || 0), 0)
+          const instMem = (h.instances || []).reduce((sum: number, i: any) => sum + Number(i.memory || 0), 0)
+          const cpuUsedEff = Math.max(instCpu, Number(h.cpuUsed ?? 0))
+          const memUsedEff = Math.max(instMem, Number(h.memoryUsed ?? 0))
+
+          const cpuLeft = Math.max(0, cpuAllow - cpuUsedEff)
+          const memLeft = Math.max(0, memMax - memUsedEff)
+
+          // 只舍不入：套餐 CPU/内存为 0 时视为不受限（避免除零）
+          const byCpu = cpu > 0 ? Math.floor(cpuLeft / cpu) : Number.POSITIVE_INFINITY
+          const byMem = memory > 0 ? Math.floor(memLeft / memory) : Number.POSITIVE_INFINITY
+          const n = Number.isFinite(Math.min(byCpu, byMem)) ? Math.max(0, Math.floor(Math.min(byCpu, byMem))) : 0
+          const bottleneck = byCpu <= byMem ? 'cpu' : 'memory'
+          if (n > 0) {
+            slots += n
+            slotHosts.push({ hostId: Number(h.id), name: h.name, slots: n, bottleneck })
+          } else if (!slotBottleneck) {
+            slotBottleneck = bottleneck
+          }
+        }
+      } catch (err) {
+        console.error('[BotBridge] slots 计算失败:', err)
+      }
+
     return {
       available: Boolean(host),
       reason: host ? '' : '面板当前没有可用容量',
       hostId: host ? Number(host.id) : null,
       cpu,
       memory,
-      disk
+      disk,
+        // 新增：按「在线且未锁流」节点的最小瓶颈算，还能开几台（只舍不入）
+        slots,
+        slotBottleneck,
+        slotHosts,
     }
   })
 
