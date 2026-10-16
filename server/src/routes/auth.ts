@@ -296,13 +296,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
     // 提取会话标识（Refresh Token 的前20个字符）
     const sessionId = refreshToken.substring(0, 20)
 
-    // 生成 Access Token (2 小时有效期)
+    // 生成 Access Token (1 天有效期)
     const accessToken = fastify.jwt.sign({
       id: user.id,
       username: user.username,
       role: user.role,
       sid: sessionId  // 会话标识，用于会话级别的 token 失效
-    }, { expiresIn: '2h' })   // 会话 2 小时，access token 给 2 小时
+    }, { expiresIn: '1d' })   // 会话 1 天，access token 给 1 天
 
     // 设置 Refresh Token Cookie (HttpOnly)
     // SEC005: 使用统一的 Cookie 配置
@@ -629,13 +629,13 @@ export default async function authRoutes(fastify: FastifyInstance) {
     // 提取会话标识（Refresh Token 的前20个字符）
     const sessionId = refreshToken.substring(0, 20)
 
-    // 生成 Access Token (2 小时有效期)
+    // 生成 Access Token (1 天有效期)
     const accessToken = fastify.jwt.sign({
       id: newUser.id,
       username: newUser.username,
       role: newUser.role,
       sid: sessionId  // 会话标识，用于会话级别的 token 失效
-    }, { expiresIn: '2h' })   // 会话 2 小时，access token 给 2 小时
+    }, { expiresIn: '1d' })   // 会话 1 天，access token 给 1 天
 
     // 设置 Refresh Token Cookie (HttpOnly)
     // SEC005: 使用统一的 Cookie 配置
@@ -800,7 +800,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
         username: user.username,
         role: user.role,
         sid: sessionId
-      }, { expiresIn: '2h' })   // 会话 2 小时，access token 给 2 小时
+      }, { expiresIn: '1d' })   // 会话 1 天，access token 给 1 天
 
       // 如果会话成功延期，同步更新 Cookie 有效期
       // SEC005: 使用统一的 Cookie 配置
