@@ -1095,31 +1095,31 @@ onMounted(() => {
                   class="badge"
                   :class="guardTestResult.verdict === 'ok' ? 'badge-success' : 'badge-error'"
                 >{{ $t(`admin.botBridge.settings.guardTestVerdict.${guardTestResult.verdict}`) }}</span>
-                <span class="text-themed-muted">{{ fmtAgo(guardTestResult?.lastRunAgoMs) }}</span>
+                <span class="text-themed-muted">{{ fmtAgo(guardTestResult.lastRunAgoMs) }}</span>
               </div>
               <div class="grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
-                <div>{{ $t('admin.botBridge.settings.guardTestEnabled') }}: <b>{{ guardTestResult?.guardEnabled ? $t('admin.botBridge.settings.guardOn') : $t('admin.botBridge.settings.guardOff') }}</b></div>
-                <div>{{ $t('admin.botBridge.settings.guardTestInterval') }}: <b>{{ guardTestResult?.intervalMinutes }} {{ $t('admin.botBridge.settings.guardUnitMinute') }}</b></div>
-                <div>{{ $t('admin.botBridge.settings.guardTestBound') }}: <b>{{ guardTestResult?.boundUsers }}</b></div>
-                <div>{{ $t('admin.botBridge.settings.guardTestInstances') }}: <b>{{ guardTestResult?.instanceCount }}</b></div>
+                <div>{{ $t('admin.botBridge.settings.guardTestEnabled') }}: <b>{{ guardTestResult.guardEnabled ? $t('admin.botBridge.settings.guardOn') : $t('admin.botBridge.settings.guardOff') }}</b></div>
+                <div>{{ $t('admin.botBridge.settings.guardTestInterval') }}: <b>{{ guardTestResult.intervalMinutes }} {{ $t('admin.botBridge.settings.guardUnitMinute') }}</b></div>
+                <div>{{ $t('admin.botBridge.settings.guardTestBound') }}: <b>{{ guardTestResult.boundUsers }}</b></div>
+                <div>{{ $t('admin.botBridge.settings.guardTestInstances') }}: <b>{{ guardTestResult.instanceCount }}</b></div>
                 <div v-if="guardTestResult.lastRun">
-                  {{ $t('admin.botBridge.settings.guardTestTotal') }}: <b>{{ guardTestResult.lastRun?.total }}</b>
+                  {{ $t('admin.botBridge.settings.guardTestTotal') }}: <b>{{ guardTestResult.lastRun.total }}</b>
                 </div>
                 <div v-if="guardTestResult.lastRun">
-                  {{ $t('admin.botBridge.settings.guardTestInGroup') }}: <b class="text-green-500">{{ guardTestResult.lastRun?.inGroup }}</b>
+                  {{ $t('admin.botBridge.settings.guardTestInGroup') }}: <b class="text-green-500">{{ guardTestResult.lastRun.inGroup }}</b>
                 </div>
                 <div v-if="guardTestResult.lastRun">
-                  {{ $t('admin.botBridge.settings.guardTestLeftGroup') }}: <b :class="guardTestResult.lastRun?.leftGroup > 0 ? 'text-red-500' : ''">{{ guardTestResult.lastRun?.leftGroup }}</b>
+                  {{ $t('admin.botBridge.settings.guardTestLeftGroup') }}: <b :class="guardTestResult.lastRun.leftGroup > 0 ? 'text-red-500' : ''">{{ guardTestResult.lastRun.leftGroup }}</b>
                 </div>
                 <div v-if="guardTestResult.lastRun">
-                  {{ $t('admin.botBridge.settings.guardTestFailed') }}: <b :class="guardTestResult.lastRun?.failed > 0 ? 'text-red-500' : ''">{{ guardTestResult.lastRun?.failed }}</b>
+                  {{ $t('admin.botBridge.settings.guardTestFailed') }}: <b :class="guardTestResult.lastRun.failed > 0 ? 'text-red-500' : ''">{{ guardTestResult.lastRun.failed }}</b>
                 </div>
                 <div v-if="guardTestResult.lastRun">
-                  {{ $t('admin.botBridge.settings.guardTestLastAt') }}: <b>{{ formatDate(guardTestResult.lastRun?.runAt) }}</b>
+                  {{ $t('admin.botBridge.settings.guardTestLastAt') }}: <b>{{ formatDate(guardTestResult.lastRun.runAt) }}</b>
                 </div>
               </div>
-              <div v-if="guardTestResult.hints?.length" class="space-y-1 border-t border-themed pt-2">
-                <div v-for="(h, i) in (guardTestResult.hints || [])" :key="i" class="text-amber-500">⚠ {{ h }}</div>
+              <div v-if="guardTestResult.hints.length" class="space-y-1 border-t border-themed pt-2">
+                <div v-for="(h, i) in guardTestResult.hints" :key="i" class="text-amber-500">⚠ {{ h }}</div>
               </div>
             </div>
           </div>
