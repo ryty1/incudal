@@ -996,7 +996,7 @@ onMounted(() => {
     <div v-if="activeTab === 'settings'" class="space-y-4">
       <SkeletonLoader v-if="settingsLoading && !settings" :count="2" />
 
-      <div v-else class="space-y-4">
+      <template v-else>
         <div class="card p-4 md:p-5 space-y-4">
           <div>
             <h3 class="text-base font-medium text-themed">{{ $t('admin.botBridge.settings.title') }}</h3>
@@ -1239,7 +1239,7 @@ onMounted(() => {
             </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 
