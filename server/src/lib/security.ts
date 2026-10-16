@@ -557,7 +557,7 @@ export interface SessionInfo {
 
 // Refresh Token 配置（简化版：延长有效期，减少刷新频率）
 const REFRESH_TOKEN_CONFIG = {
-    expiresInSeconds: 30 * 24 * 60 * 60,  // 30天
+    expiresInSeconds: 2 * 60 * 60,  // 30天
 }
 
 // 导出任务 TTL（数据库存储）
