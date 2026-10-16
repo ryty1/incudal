@@ -1088,6 +1088,30 @@ export default async function botBridgeRoutes(fastify: FastifyInstance) {
 
   // GET /api/bot/promo/list?userId=&scene=&status=&limit=
   // 按面板用户列出他的抵扣码（机器人「券码」页用；面板侧本来就存着这些码）
+  // POST /api/bot/promo/void —— 机器人作废券（保留记录，核销时会被拒）
+  // 用途：用户兑换后超时未用、机器人回收积分场景。
+  fastify.post('/promo/void', { ...botGuard, config: WRITE_LIMIT }, async (request, reply) => {
+    const body = (request.body || {}) as Record<string, any>
+    const code = String(body.code || '').trim()
+    if (!code) {
+      return reply.code(400).send(apiError(ErrorCode.INVALID_PARAMS, '缺少券码 code'))
+    }
+  
+    const existing = await prisma.prisma.botPromoCode.findUnique({ where: { code } })
+    if (!existing) {
+      return reply.code(404).send(apiError(ErrorCode.INVALID_PARAMS, '券码不存在'))
+    }
+    if (existing.status === 'used') {
+      return reply.code(400).send(apiError(ErrorCode.INVALID_PARAMS, '已核销的券不能作废'))
+    }
+    if (existing.status === 'void') {
+      return { ok: true, status: 'void', alreadyVoid: true }
+    }
+  
+    await prisma.prisma.botPromoCode.update({ where: { code }, data: { status: 'void' } })
+    return { ok: true, status: 'void', code }
+  })
+  
   fastify.get('/promo/list', { ...botGuard, config: READ_LIMIT }, async (request, reply) => {
     const q = (request.query || {}) as Record<string, string>
     const userId = toInt(q.userId, 0, 0, Number.MAX_SAFE_INTEGER)
