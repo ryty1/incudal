@@ -3840,7 +3840,7 @@ export default {
               jobPartialHint: '有容器沒刪乾淨：已保留 TG 綁定，下一輪守護會再次命中並重試。',
             },
             title: 'TG管理',
-            description: '<a href="https://t.me/kadssvip_bot" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline font-medium">KADSS</a> 機器人透過共享密鑰呼叫面板，讀取兌換碼與守護日誌',
+            description: '<a href="https://github.com/ryty1/tg-antispam" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:underline font-medium">需要自行部署桥接机器人服务</a>（KADSS 授權版）；機器人透過共享密鑰呼叫面板，讀取兌換碼與守護日誌',
             loadFailed: '載入失敗',
             totalCount: '共 {count} 筆',
             perPage: '每頁',
