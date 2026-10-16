@@ -739,7 +739,18 @@ export default async function botBridgeRoutes(fastify: FastifyInstance) {
     const body = (request.body || {}) as Record<string, any>
     const userId = toInt(body.userId, 0, 1, Number.MAX_SAFE_INTEGER)
     const amount = Number(body.amount)
-    const ttlDays = toInt(body.ttlDays, 7, 1, 90)
+    // 券有效期：机器人只发 ttlMinutes（如 10 分钟）。
+    // ttlDays 保留兼容老机器人；两者都传时以 ttlMinutes 为准。
+    const hasTtlMinutes = body.ttlMinutes !== undefined && body.ttlMinutes !== null && body.ttlMinutes !== ''
+    const ttlMinutesRaw = hasTtlMinutes ? toInt(body.ttlMinutes, 0, 1, 90 * 24 * 60) : 0
+    const ttlDays = hasTtlMinutes
+      ? Math.max(1, Math.ceil(ttlMinutesRaw / (24 * 60)))   // 仅兼容/日志，不决定过期
+      : toInt(body.ttlDays, 7, 1, 90)
+    // 实际过期时间：按分钟精确计算（ttlMinutes 优先，否则按天）
+    const ttlDaysFallback = ttlDays   // 兼容：未传 ttlMinutes 时按天
+    const expiresAtMs = hasTtlMinutes
+      ? Date.now() + ttlMinutesRaw * 60 * 1000
+      : Date.now() + ttlDaysFallback * 24 * 60 * 60 * 1000
     const sourceChatId = body.sourceChatId != null ? BigInt(Math.floor(Number(body.sourceChatId))) : null
     const reason = String(body.reason || '').trim().slice(0, 200) || null
     // 场景：purchase=创建实例用，renew=续费用。两者互不通用，由机器人显式指定。
@@ -864,7 +875,7 @@ export default async function botBridgeRoutes(fastify: FastifyInstance) {
         itemName: body.itemName != null ? String(body.itemName).trim().slice(0, 120) : null,
         packageId: bindPackageId || null,
         hostId: bindHostId || null,
-        expiresAt: new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(expiresAtMs),
       },
     })
 
