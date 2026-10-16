@@ -2157,7 +2157,8 @@ export default {
             prev: '上一頁',
             next: '下一頁',
             totalRows: '共 {n} 筆',
-            statusVoid: '已作廢',
+            statusRefunded: '已退還',
+                statusVoid: '已作廢',
             statusExpired: '已過期',
             copyStarted: '實例複製已開始，請稍候...',
             validation: {

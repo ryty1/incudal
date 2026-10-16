@@ -754,7 +754,7 @@ export default async function adminBotBridgeRoutes(app: FastifyInstance) {
           where: { telegramUserId: { not: null }, status: 'active', expiresAt: { lt: now } },
         }),
         // 已作废（void）：既不算可用也不算已核销，之前没归类导致「总数 ≠ 可用+已核销+已过期」
-        prisma.prisma.botPromoCode.count({ where: { telegramUserId: { not: null }, status: 'void' } }),
+        prisma.prisma.botPromoCode.count({ where: { telegramUserId: { not: null }, status: { in: ['void', 'refunded'] } } }),
         prisma.prisma.botGuardLog.count(),
         prisma.prisma.botGuardLog.findFirst({ orderBy: { runAt: 'desc' } }),
         prisma.prisma.userTelegramBinding.count(),

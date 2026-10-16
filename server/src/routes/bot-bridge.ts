@@ -1104,12 +1104,13 @@ export default async function botBridgeRoutes(fastify: FastifyInstance) {
     if (existing.status === 'used') {
       return reply.code(400).send(apiError(ErrorCode.INVALID_PARAMS, '已核销的券不能作废'))
     }
-    if (existing.status === 'void') {
-      return { ok: true, status: 'void', alreadyVoid: true }
+    // 机器人作废 = 「已退还」（区别于后台手动作废的 void）
+    if (existing.status === 'refunded') {
+      return { ok: true, status: 'refunded', alreadyVoid: true }
     }
   
-    await prisma.prisma.botPromoCode.update({ where: { code }, data: { status: 'void' } })
-    return { ok: true, status: 'void', code }
+    await prisma.prisma.botPromoCode.update({ where: { code }, data: { status: 'refunded' } })
+    return { ok: true, status: 'refunded', code }
   })
   
   fastify.get('/promo/list', { ...botGuard, config: READ_LIMIT }, async (request, reply) => {

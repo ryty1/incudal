@@ -555,13 +555,14 @@ function formatDate(value: string | null): string {
 function statusClass(status: string): string {
   if (status === 'used') return 'badge-default'
   if (status === 'expired') return 'badge-error'
-  if (status === 'void') return 'badge-error'
+  if (status === 'void' || status === 'refunded') return 'badge-error'
   return 'badge-success'
 }
 
 function statusLabel(status: string): string {
   if (status === 'used') return t('admin.botBridge.records.statusUsed')
   if (status === 'expired') return t('admin.botBridge.records.statusExpired')
+  if (status === 'refunded') return t('admin.botBridge.records.statusRefunded')
   if (status === 'void') return t('admin.botBridge.records.statusVoid')
   return t('admin.botBridge.records.statusActive')
 }
