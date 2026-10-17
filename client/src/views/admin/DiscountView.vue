@@ -286,6 +286,13 @@ function openStatusDetail(row: PromoRow) {
   if (row.status === 'active') { activeDetail.value = row }
 }
 
+// 跳转用户管理并自动搜索该用户
+function gotoUser(username: string | null | undefined) {
+  if (!username) return
+  usedDetail.value = null
+  router.push({ path: '/admin/users', query: { search: username, field: 'username' } })
+}
+
 // 跳转实例详情页
 function gotoInstance(id: number | null | undefined) {
   if (!id) return
@@ -583,7 +590,12 @@ onMounted(() => {
           </div>
           <div class="flex items-center justify-between gap-4">
             <span class="text-themed-muted">{{ t('admin.discount.usedBy') }}</span>
-            <span class="text-themed">{{ usedDetail.usedByUsername || '-' }}</span>
+            <button
+              v-if="usedDetail.usedByUsername"
+              class="text-blue-500 hover:underline text-right"
+              @click="gotoUser(usedDetail.usedByUsername)"
+            >{{ usedDetail.usedByUsername }}</button>
+            <span v-else class="text-themed">-</span>
           </div>
           <div class="flex items-center justify-between gap-4">
             <span class="text-themed-muted">{{ t('admin.discount.usedByTgId') }}</span>

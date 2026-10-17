@@ -175,6 +175,16 @@ const normalizedUserSearchFields = computed(() => {
 })
 
 onMounted(async () => {
+  // 支持从其它页面跳转时带 ?search=xxx&field=username 自动搜索
+  const q = route.query.search
+  const f = route.query.field
+  if (typeof q === 'string' && q.trim()) {
+    userSearch.value = q.trim()
+    if (typeof f === 'string' && USER_SEARCH_FIELDS.includes(f)) {
+      userSearchFields.value = [f]
+    }
+    userSearchExact.value = true
+  }
   await loadUsers()
 })
 
