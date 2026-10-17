@@ -284,10 +284,10 @@ function openUsedDetail(row: PromoRow) {
   usedDetail.value = row
 }
 
-// 「可用」券：显示创建时间
-function openActiveDetail(row: PromoRow) {
-  if (row.status !== 'active') return
-  activeDetail.value = row
+// 点状态列：已核销 → 核销详情；可用 → 创建时间
+function openStatusDetail(row: PromoRow) {
+  if (row.status === 'used') { usedDetail.value = row; return }
+  if (row.status === 'active') { activeDetail.value = row }
 }
 
 // 跳转实例详情页
@@ -480,8 +480,6 @@ onMounted(() => {
               v-for="row in rows"
               :key="row.id"
               class="border-t border-themed hover:bg-themed-secondary/40"
-              :class="row.status === 'used' ? 'cursor-pointer' : ''"
-              @click="openUsedDetail(row)"
             >
               <td class="p-3 font-mono text-xs whitespace-nowrap">
                 <button class="hover:text-blue-500" @click.stop="copyText(row.code)">{{ row.code }}</button>
@@ -495,9 +493,9 @@ onMounted(() => {
                 <span
                   v-else
                   class="badge"
-                  :class="[statusClass(row.status), row.status === 'active' ? 'cursor-pointer hover:opacity-80' : '']"
-                  :title="row.status === 'active' ? t('admin.discount.createdAt') : ''"
-                  @click.stop="openActiveDetail(row)"
+                  :class="[statusClass(row.status), (row.status === 'used' || row.status === 'active') ? 'cursor-pointer hover:opacity-80' : '']"
+                  :title="row.status === 'used' ? t('admin.discount.usedDetailTitle') : (row.status === 'active' ? t('admin.discount.createdAt') : '')"
+                  @click.stop="openStatusDetail(row)"
                 >{{ statusLabel(row.status) }}</span>
               </td>
               <td class="p-3 whitespace-nowrap text-xs text-themed-muted">{{ new Date(row.expiresAt).toLocaleString() }}</td>
