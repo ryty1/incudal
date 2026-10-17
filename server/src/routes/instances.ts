@@ -3713,7 +3713,15 @@ export default async function instanceRoutes(fastify: FastifyInstance) {
 
       // ===== 0.1 处理退款（节点所有者/管理员删除他人的付费实例时）=====
       let hostOwnerRefundAmount = 0
-      if (isPrivilegedDeleter && instance.user_id !== user.id) {
+
+      // 折扣券开通/续费的实例：删除不退款
+      // （含后台券与机器人兑换券，二者都写 bot_promo_codes.used_instance_id）
+      const promoLinked = await prisma.botPromoCode.findFirst({
+        where: { usedInstanceId: instance.id },
+        select: { id: true, code: true, scene: true }
+      })
+
+      if (isPrivilegedDeleter && instance.user_id !== user.id && !promoLinked) {
         const instanceBilling = await prisma.instance.findUnique({
           where: { id: instance.id },
           select: {
