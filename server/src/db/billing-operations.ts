@@ -836,8 +836,9 @@ export async function performPlanChange(
       }
     }
 
-    // 降级退款到余额
-    if (changeResult.priceDiff < 0) {
+    // 降级退款到余额（券开通/续费、管理员首周期免费的实例不退；
+    // 真实原价付款、AFF 优惠购买的实例照常退）
+    if (changeResult.priceDiff < 0 && !(await isInstanceNonRefundable(instance.id))) {
       refundAmount = Math.abs(changeResult.priceDiff)
       const newBalance = oldBalance + refundAmount
 
