@@ -1731,8 +1731,10 @@ export default async function adminBillingRoutes(app: FastifyInstance): Promise<
           throw new BatchPriceUpdateError('实例计费信息已变化，请刷新后重试', 409)
         }
 
-        // 如果需要结算差价（只处理涨价补交；降价不退差价）
-        if (settleBalance && priceDiff > 0) {
+        // 结算差价：涨价补交、降价退差价；
+        // 但「降到 0」（变成免费实例）不退
+        const skipZeroRefund = priceDiff < 0 && roundedNewPrice === 0
+        if (settleBalance && priceDiff !== 0 && !skipZeroRefund) {
           let balanceBefore = userBalance
           let balanceAfter = balanceBefore - priceDiff
 
@@ -1990,9 +1992,10 @@ export default async function adminBillingRoutes(app: FastifyInstance): Promise<
         }
 
         if (settleBalance) {
-          // 只结算涨价补交；降价不退差价
+          // 结算差价：涨价补交、降价退差价；
+          // 但「降到 0」（变成免费实例）不退
           const settlementItems = changedItems
-            .filter(item => item.user && item.priceDiff > 0)
+            .filter(item => item.user && item.priceDiff !== 0 && !(item.priceDiff < 0 && item.newPrice === 0))
             .sort((a, b) => {
               if (a.user!.id !== b.user!.id) return a.user!.id - b.user!.id
               return a.priceDiff - b.priceDiff
