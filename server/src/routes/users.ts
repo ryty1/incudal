@@ -157,33 +157,29 @@ export default async function userRoutes(fastify: FastifyInstance) {
       exactMatch: parseBooleanQuery(exact)
     })
 
-    // 获取所有用户的 2FA 状态
     const userIds = result.items.map((u: any) => u.id)
-    const twoFAStatuses = await Promise.all(
-      userIds.map(async (id: number) => ({
-        id,
-        enabled: await db.is2FAEnabled(id)
-      }))
-    )
-    const twoFAMap = new Map(twoFAStatuses.map(s => [s.id, s.enabled]))
 
-    // 获取所有用户的实例数量
-    const instanceCounts = await Promise.all(
-      userIds.map(async (id: number) => {
-        const instances = await db.getInstancesByUserId(id)
-        return { id, count: instances.length }
-      })
-    )
-    const instanceCountMap = new Map(instanceCounts.map(ic => [ic.id, ic.count]))
+    // 2FA 状态（批量，避免 N+1）
+    const twoFARows = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, twoFactorEnabled: true }
+    })
+    const twoFAMap = new Map(twoFARows.map(r => [r.id, !!r.twoFactorEnabled]))
 
-    // 获取所有用户的 GitHub 绑定状态
-    const githubBindings = await Promise.all(
-      userIds.map(async (id: number) => ({
-        id,
-        hasGithub: await db.hasOAuthBinding(id, 'github')
-      }))
-    )
-    const githubBindingMap = new Map(githubBindings.map(gb => [gb.id, gb.hasGithub]))
+    // 实例数量（批量 groupBy，避免 N+1 和 include host）
+    const instGroups = await prisma.instance.groupBy({
+      by: ['userId'],
+      where: { userId: { in: userIds }, status: { not: 'deleted' } },
+      _count: { _all: true }
+    })
+    const instanceCountMap = new Map(instGroups.map(g => [g.userId, g._count._all]))
+
+    // GitHub 绑定状态（批量）
+    const ghRows = await prisma.userOAuthBinding.findMany({
+      where: { userId: { in: userIds }, provider: 'github' },
+      select: { userId: true }
+    })
+    const githubBindingMap = new Map(ghRows.map(r => [r.userId, true]))
 
     // TG 绑定情况（管理端「解绑 TG」按钮据此显示）
     const tgRows = await prisma.userTelegramBinding.findMany({
@@ -195,14 +191,12 @@ export default async function userRoutes(fastify: FastifyInstance) {
     // 获取所有用户的最后登录记录
     const lastLoginMap = await db.getLastLoginRecordsForUsers(userIds)
 
-    // 获取所有用户的余额
-    const userBalances = await Promise.all(
-      userIds.map(async (id: number) => ({
-        id,
-        balance: await db.getUserBalance(id)
-      }))
-    )
-    const balanceMap = new Map(userBalances.map(ub => [ub.id, ub.balance]))
+    // 余额（批量）
+    const balRows = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, balance: true }
+    })
+    const balanceMap = new Map(balRows.map(r => [r.id, Number(r.balance)]))
 
     // 获取所有用户的实际消费统计（兼容历史 consume 日志 amount 正负号不一致）
     const consumeMap = await db.getUsersTotalConsumeMap(userIds)

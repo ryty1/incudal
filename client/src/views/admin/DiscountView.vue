@@ -282,7 +282,12 @@ const router = useRouter()
 
 // 点状态列：已核销 → 核销详情；可用 → 创建时间
 function openStatusDetail(row: PromoRow) {
-  if (row.status === 'used') { usedDetail.value = row; return }
+  if (row.status === 'used') {
+    usedDetail.value = row
+    // 预取用户管理页 chunk，点「使用者」跳转时秒开
+    import('@/views/admin/UsersView.vue').catch(() => {})
+    return
+  }
   if (row.status === 'active') { activeDetail.value = row }
 }
 
