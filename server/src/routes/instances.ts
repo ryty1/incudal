@@ -3716,20 +3716,21 @@ export default async function instanceRoutes(fastify: FastifyInstance) {
 
       // 以下来源的实例：删除/注销一律不退款
       //   1) 折扣券开通/续费（后台券 + 机器人券，都写 bot_promo_codes.used_instance_id）
-      //   2) 管理员在后台手动创建的实例（首周期计费记录 remark 以「管理员」开头）
+      //   2) 管理员后台手动创建、且首周期免费的付费实例
+      //      （计费记录 type=newPurchase 且 remark 含「未扣费」）
       const promoLinked = await prisma.botPromoCode.findFirst({
         where: { usedInstanceId: instance.id },
         select: { id: true, code: true, scene: true }
       })
-      const adminCreated = await prisma.instanceBillingRecord.findFirst({
+      const adminFreeFirstCycle = await prisma.instanceBillingRecord.findFirst({
         where: {
           instanceId: instance.id,
           type: 'newPurchase',
-          remark: { startsWith: '管理员' }
+          remark: { contains: '未扣费' }
         },
         select: { id: true, remark: true }
       })
-      const noRefundSource = !!promoLinked || !!adminCreated
+      const noRefundSource = !!promoLinked || !!adminFreeFirstCycle
 
       if (isPrivilegedDeleter && instance.user_id !== user.id && !noRefundSource) {
         const instanceBilling = await prisma.instance.findUnique({
