@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
 
@@ -274,10 +275,26 @@ async function removeCode(row: PromoRow) {
 // ===== 核销详情弹窗 =====
 // 已核销的券：点击行/状态徽章，弹窗显示「谁用了这张券 + 开了什么机器」
 const usedDetail = ref<PromoRow | null>(null)
+// 「可用」券：点击状态徽章看创建时间
+const activeDetail = ref<PromoRow | null>(null)
+const router = useRouter()
 
 function openUsedDetail(row: PromoRow) {
   if (row.status !== 'used') return
   usedDetail.value = row
+}
+
+// 「可用」券：显示创建时间
+function openActiveDetail(row: PromoRow) {
+  if (row.status !== 'active') return
+  activeDetail.value = row
+}
+
+// 跳转实例详情页
+function gotoInstance(id: number | null | undefined) {
+  if (!id) return
+  usedDetail.value = null
+  router.push(`/instances/${id}`)
 }
 
 // ===== 工具 =====
@@ -475,7 +492,13 @@ onMounted(() => {
               <td class="p-3 whitespace-nowrap">¥{{ Number(row.amount).toFixed(2) }}</td>
               <td class="p-3 whitespace-nowrap">
                 <span v-if="isExpired(row)" class="badge bg-themed-secondary text-themed-muted">{{ t('admin.discount.statusExpired') }}</span>
-                <span v-else class="badge" :class="statusClass(row.status)">{{ statusLabel(row.status) }}</span>
+                <span
+                  v-else
+                  class="badge"
+                  :class="[statusClass(row.status), row.status === 'active' ? 'cursor-pointer hover:opacity-80' : '']"
+                  :title="row.status === 'active' ? t('admin.discount.createdAt') : ''"
+                  @click.stop="openActiveDetail(row)"
+                >{{ statusLabel(row.status) }}</span>
               </td>
               <td class="p-3 whitespace-nowrap text-xs text-themed-muted">{{ new Date(row.expiresAt).toLocaleString() }}</td>
               <td class="p-3 whitespace-nowrap">
@@ -574,7 +597,12 @@ onMounted(() => {
           </div>
           <div class="flex items-center justify-between gap-4">
             <span class="text-themed-muted">{{ t('admin.discount.usedInstanceName') }}</span>
-            <span class="text-themed">{{ usedDetail.usedInstanceName || '-' }}</span>
+            <button
+              v-if="usedDetail.usedInstanceId"
+              class="text-blue-500 hover:underline text-right"
+              @click="gotoInstance(usedDetail.usedInstanceId)"
+            >{{ usedDetail.usedInstanceName || ('#' + usedDetail.usedInstanceId) }}</button>
+            <span v-else class="text-themed">-</span>
           </div>
           <div class="flex items-center justify-between gap-4">
             <span class="text-themed-muted">{{ t('admin.discount.usedInstanceId') }}</span>
@@ -583,6 +611,50 @@ onMounted(() => {
           <div class="flex items-center justify-between gap-4">
             <span class="text-themed-muted">{{ t('admin.discount.usedAt') }}</span>
             <span class="text-themed">{{ usedDetail.usedAt ? new Date(usedDetail.usedAt).toLocaleString() : '-' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 「可用」券详情弹窗：看创建时间 -->
+    <div
+      v-if="activeDetail"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      @click.self="activeDetail = null"
+    >
+      <div class="card w-full max-w-md p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-medium text-themed">{{ t('admin.discount.activeDetailTitle') }}</div>
+          <button class="btn-ghost btn-sm" @click="activeDetail = null">{{ t('common.close') }}</button>
+        </div>
+        <div class="space-y-3 text-sm">
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-themed-muted">{{ t('admin.discount.colCode') }}</span>
+            <span class="font-mono text-xs">{{ activeDetail.code }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-themed-muted">{{ t('admin.discount.colItem') }}</span>
+            <span class="text-themed text-right">{{ activeDetail.itemName || '-' }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-themed-muted">{{ t('admin.discount.colScene') }}</span>
+            <span class="text-themed">{{ sceneLabel(activeDetail.scene) }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-themed-muted">{{ t('admin.discount.colCycle') }}</span>
+            <span class="text-themed">{{ cycleLabel(activeDetail.cycleMonths) }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-themed-muted">{{ t('admin.discount.colAmount') }}</span>
+            <span class="text-themed">¥{{ Number(activeDetail.amount).toFixed(2) }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-4 border-t border-themed pt-3">
+            <span class="text-themed-muted">{{ t('admin.discount.createdAt') }}</span>
+            <span class="text-themed font-medium">{{ activeDetail.createdAt ? new Date(activeDetail.createdAt).toLocaleString() : '-' }}</span>
+          </div>
+          <div class="flex items-center justify-between gap-4">
+            <span class="text-themed-muted">{{ t('admin.discount.colExpires') }}</span>
+            <span class="text-themed">{{ activeDetail.expiresAt ? new Date(activeDetail.expiresAt).toLocaleString() : '-' }}</span>
           </div>
         </div>
       </div>

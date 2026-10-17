@@ -3732,6 +3732,9 @@ export default {
         },
         discount: {
             usedDetailTitle: '核銷詳情',
+            activeDetailTitle: '券碼資訊',
+            createdAt: '建立時間',
+            viewInstance: '查看實例',
             usedBy: '使用者',
             usedByTgId: 'TGID',
             usedInstanceName: '實例名稱',
