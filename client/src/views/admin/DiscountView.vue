@@ -279,10 +279,6 @@ const usedDetail = ref<PromoRow | null>(null)
 const activeDetail = ref<PromoRow | null>(null)
 const router = useRouter()
 
-function openUsedDetail(row: PromoRow) {
-  if (row.status !== 'used') return
-  usedDetail.value = row
-}
 
 // 点状态列：已核销 → 核销详情；可用 → 创建时间
 function openStatusDetail(row: PromoRow) {
