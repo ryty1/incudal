@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import api from '@/api'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
@@ -14,6 +14,7 @@ import { normalizeCountryName } from '@/utils/countryDisplay'
 
 const { t } = useI18n()
 const router = useRouter()
+const route = useRoute()
 const toast = useToast()
 const themeStore = useThemeStore()
 const authStore = useAuthStore()
