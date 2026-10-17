@@ -176,7 +176,7 @@ const normalizedUserSearchFields = computed(() => {
 })
 
 // 从 URL 参数应用搜索条件：先清空搜索框，再填入
-function applySearchFromQuery(): boolean {
+function applySearchFromQuery() {
   const q = route.query.search
   const f = route.query.field
   if (typeof q !== 'string' || !q.trim()) return false
