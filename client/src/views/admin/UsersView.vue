@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import api from '@/api'
@@ -175,18 +175,35 @@ const normalizedUserSearchFields = computed(() => {
   return USER_SEARCH_FIELDS.filter(field => userSearchFields.value.includes(field))
 })
 
-onMounted(async () => {
-  // 支持从其它页面跳转时带 ?search=xxx&field=username 自动搜索
+// 从 URL 参数应用搜索条件：先清空搜索框，再填入
+function applySearchFromQuery(): boolean {
   const q = route.query.search
   const f = route.query.field
-  if (typeof q === 'string' && q.trim()) {
-    userSearch.value = q.trim()
-    if (typeof f === 'string' && USER_SEARCH_FIELDS.includes(f)) {
-      userSearchFields.value = [f]
-    }
-    userSearchExact.value = true
+  if (typeof q !== 'string' || !q.trim()) return false
+  // 1) 先清除
+  userSearch.value = ''
+  userSearchFields.value = [...USER_SEARCH_FIELDS]
+  userSearchExact.value = false
+  userPage.value = 1
+  // 2) 再填入
+  userSearch.value = q.trim()
+  if (typeof f === 'string' && USER_SEARCH_FIELDS.includes(f)) {
+    userSearchFields.value = [f]
   }
+  userSearchExact.value = true
+  return true
+}
+
+onMounted(async () => {
+  applySearchFromQuery()
   await loadUsers()
+})
+
+// 组件被 KeepAlive 缓存后再次进入时，onMounted 不会再触发
+let firstActivate = true
+onActivated(() => {
+  if (firstActivate) { firstActivate = false; return }
+  if (applySearchFromQuery()) loadUsers()
 })
 
 // 搜索防抖
