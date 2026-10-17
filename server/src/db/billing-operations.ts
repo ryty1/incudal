@@ -21,6 +21,7 @@ import { shouldSyncInstanceSwapSizeWithPlan } from '../lib/instance-swap.js'
 import { resolveInstanceTrafficLimitForHost } from '../lib/traffic-multiplier.js'
 import { calculateInstanceTrafficStatus } from '../services/traffic-utils.js'
 import { HOSTING_BALANCE_LOG_LOCK_NAMESPACE, tryAdvisoryTransactionLock } from './advisory-locks.js'
+import { isInstanceNonRefundable } from './instance-refund-guard.js'
 
 // ==================== 类型定义 ====================
 
@@ -216,6 +217,18 @@ export async function calculateInstanceRemainingRefundQuote(instance: {
       refundableValue: 0,
       maxRefundable: 0,
       isPaid: false
+    }
+  }
+
+  // 券开通/续费、管理员首周期免费的实例：一律不可退款
+  // （放在这里统一拦截，删除/注销/销毁/降级等所有调用方都走这条）
+  if (await isInstanceNonRefundable(instance.id)) {
+    return {
+      remainingDays: 0,
+      remainingValue: 0,
+      refundableValue: 0,
+      maxRefundable: 0,
+      isPaid: true
     }
   }
 
