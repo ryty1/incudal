@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, onActivated, watch } from 'vue'
+import { ref, computed, onMounted, onActivated, onDeactivated, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import api from '@/api'
@@ -108,32 +108,7 @@ let hasInitialLoad = false
 async function loadHosts() {
   loading.value = true
   try {
-    let res
-    if (isAdmin.value && scope.value === 'hosted') {
-      // 管理员查看托管节点
-      res = await api.hosts.listHosted({
-        page: page.value,
-        pageSize: pageSize.value,
-        search: search.value,
-        ...(filterUserId.value ? { userId: parseInt(filterUserId.value, 10) } : {})
-      })
-    } else if (isAdmin.value && scope.value === 'mine') {
-      // 管理员查看自己的节点（传 scope: 'mine'）
-      res = await api.hosts.list({
-        page: page.value,
-        pageSize: pageSize.value,
-        search: search.value,
-        scope: 'mine'
-      })
-    } else {
-      // 普通用户查看自己的节点
-      res = await api.hosts.list({
-        page: page.value,
-        pageSize: pageSize.value,
-        search: search.value,
-        mine: true
-      })
-    }
+    const res = await fetchHostList()
     hosts.value = res.hosts || []
     total.value = res.total || 0
     totalPages.value = res.totalPages || 1
@@ -141,6 +116,64 @@ async function loadHosts() {
     toast.error(err.message)
   } finally {
     loading.value = false
+  }
+}
+
+// 按当前筛选条件拉一次列表（loadHosts 与后台轮询共用）
+function fetchHostList() {
+  if (isAdmin.value && scope.value === 'hosted') {
+    // 管理员查看托管节点
+    return api.hosts.listHosted({
+      page: page.value,
+      pageSize: pageSize.value,
+      search: search.value,
+      ...(filterUserId.value ? { userId: parseInt(filterUserId.value, 10) } : {})
+    })
+  }
+  if (isAdmin.value && scope.value === 'mine') {
+    // 管理员查看自己的节点（传 scope: 'mine'）
+    return api.hosts.list({
+      page: page.value,
+      pageSize: pageSize.value,
+      search: search.value,
+      scope: 'mine'
+    })
+  }
+  // 普通用户查看自己的节点
+  return api.hosts.list({
+    page: page.value,
+    pageSize: pageSize.value,
+    search: search.value,
+    mine: true
+  })
+}
+
+// 后台静默刷新节点状态：不显示 loading、不闪屏、失败不打扰
+// （后端每 5 分钟检查一次连通性，页面不轮询的话状态永远停在进页面那一刻）
+const STATUS_POLL_INTERVAL_MS = 60 * 1000
+let statusPollTimer = null
+
+async function refreshHostStatusesSilently() {
+  // 页面在后台标签页 / 正在加载 / 正在测速时跳过，避免打断用户操作
+  if (loading.value || testingId.value || document.hidden) return
+  try {
+    const res = await fetchHostList()
+    const rows = res.hosts || []
+    if (!rows.length) return
+    // 就地更新状态与资源，不整体替换数组，避免表格重排闪烁
+    const byId = new Map(hosts.value.map(h => [h.id, h]))
+    rows.forEach(row => {
+      const local = byId.get(row.id)
+      if (local) {
+        local.status = row.status
+        local.cpuUsed = row.cpuUsed
+        local.memoryUsed = row.memoryUsed
+        local.diskUsed = row.diskUsed
+        local.instanceCount = row.instanceCount
+      }
+    })
+  } catch {
+    // 轮询失败静默处理，下一轮再试
   }
 }
 
@@ -211,6 +244,9 @@ async function testHost(host) {
     if (row) row.status = 'online'
   } catch (err) {
     toast.error(t('admin.hosts.testFailed') + ': ' + (err?.message || String(err)))
+    // 后端失败时已把状态落库（TCP 不通=offline / API 不通=abnormal），拉一次真实状态
+    testingId.value = 0
+    refreshHostStatusesSilently()
   } finally {
     testingId.value = 0
   }
@@ -371,9 +407,28 @@ function getStatusLabel(status) {
   return map[status] || status
 }
 
+function startStatusPolling() {
+  stopStatusPolling()
+  statusPollTimer = setInterval(refreshHostStatusesSilently, STATUS_POLL_INTERVAL_MS)
+}
+
+function stopStatusPolling() {
+  if (statusPollTimer) {
+    clearInterval(statusPollTimer)
+    statusPollTimer = null
+  }
+}
+
+// 从后台标签页切回来时立即刷新一次，不用等下一轮
+function handleVisibilityChange() {
+  if (!document.hidden) refreshHostStatusesSilently()
+}
+
 onMounted(() => {
   loadHosts()
   hasInitialLoad = true
+  startStatusPolling()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 // 当组件从 KeepAlive 缓存中激活时，重新加载数据
@@ -383,6 +438,17 @@ onActivated(() => {
   if (hasInitialLoad) {
     loadHosts()
   }
+  startStatusPolling()
+})
+
+onDeactivated(() => {
+  stopStatusPolling()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onUnmounted(() => {
+  stopStatusPolling()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 

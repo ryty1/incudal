@@ -53,6 +53,19 @@ const execFileAsync = promisify(execFile)
 // 第一级 TCP 探测超时（5秒）
 const HOST_TCP_TIMEOUT_MS = 5 * 1000
 
+// 连续失败多少轮才判离线/异常（配合 5 分钟一轮 → 最慢 10 分钟变红）
+const HOST_FAIL_THRESHOLD = 2
+
+/**
+ * 节点连通性检查专用的连续失败计数。
+ *
+ * 不要复用 host-health.ts 里的 errorCount：那里有个 5 分钟冷却重置，
+ * 而实例同步（1 分钟）、流量采集（3 分钟）都会调 isHostHealthy()，
+ * 计数器被反复清零，在线节点掉线后永远攒不满 3 次 → 永远判不到离线
+ * （踩过：HK-BGP 挂了 2 小时面板仍显示在线）。
+ */
+const hostCheckFailures = new Map<number, { tcp: number; api: number }>()
+
 // ==================== 节点连通性检查 ====================
 
 /**
@@ -134,6 +147,7 @@ async function checkHostsConnectivity(): Promise<void> {
 
                     // 两级都通过 → 在线
                     recordHostSuccess(host.id, Date.now() - start)
+                    hostCheckFailures.delete(host.id)
 
                     if (host.status !== 'online') {
                         await db.updateHostStatus(host.id, 'online')
@@ -150,11 +164,19 @@ async function checkHostsConnectivity(): Promise<void> {
                 } catch (error) {
                     recordHostError(host.id)
 
+                    // 本检查器自己的连续失败计数（tcp 失败 = 离线，api 失败 = 异常）
+                    const prev = hostCheckFailures.get(host.id) ?? { tcp: 0, api: 0 }
+                    const fails = tcpOk ? prev.api + 1 : prev.tcp + 1
+                    hostCheckFailures.set(host.id, {
+                        tcp: tcpOk ? 0 : prev.tcp + 1,
+                        api: tcpOk ? prev.api + 1 : 0
+                    })
+
                     // 连续失败达到阈值才处理，避免网络抖动误判；
                     // 但节点【本来就是非在线状态】时不用再等（它已经不在线了，
-                    // 这里只是把 offline/abnormal 精修成正确的那个），否则要等 3 轮。
+                    // 这里只是把 offline/abnormal 精修成正确的那个）。
                     const alreadyDown = host.status === 'offline' || host.status === 'abnormal'
-                    if (!isHostHealthy(host.id) || alreadyDown) {
+                    if (fails >= HOST_FAIL_THRESHOLD || alreadyDown) {
                         // 第一级 nc 通过、第二级 API 失败 → 异常（端口通但服务不可用）
                         // 第一级 nc 就失败 → 离线（真连不上）
                         const nextStatus: 'abnormal' | 'offline' = tcpOk ? 'abnormal' : 'offline'
@@ -510,16 +532,16 @@ export function startStatusScheduler(): void {
         runStatusSyncJob().catch(console.error)
     })
 
-    // 节点连通性检查：每 10 分钟一次，与实例同步解耦
-    // 判离线需连续 3 次失败 → 掉线后约 30 分钟在面板显示「离线」
-    // 恢复在线只需 1 次成功 → 最慢 10 分钟
-    schedule('*/10 * * * *', () => {
+    // 节点连通性检查：每 5 分钟一次，与实例同步解耦
+    // 判离线需连续 2 次失败 → 掉线后约 10 分钟内面板显示「离线」
+    // 恢复在线只需 1 次成功 → 最慢 5 分钟
+    schedule('*/5 * * * *', () => {
         checkHostsConnectivity().catch((error) =>
             console.error('[HostCheck] 节点连通性检查失败:', error)
         )
     })
 
-    console.log('[StatusSync] Scheduler started (instance sync: 1 min poll / running 2 min / stopped 10 min; host connectivity check: every 10 min)')
+    console.log('[StatusSync] Scheduler started (instance sync: 1 min poll / running 2 min / stopped 10 min; host connectivity check: every 5 min)')
 }
 
 /**
