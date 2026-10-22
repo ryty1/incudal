@@ -3,8 +3,8 @@
 # =====================================================
 
 # Stage 1: 依赖安装
-FROM node:22-alpine AS deps
-RUN corepack enable && corepack prepare pnpm@9 --activate
+FROM node:26-alpine AS deps
+RUN npm install -g pnpm@9
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -17,8 +17,8 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 RUN pnpm rebuild esbuild
 
 # Stage 2: 构建前端
-FROM node:22-alpine AS builder-client
-RUN corepack enable && corepack prepare pnpm@9 --activate
+FROM node:26-alpine AS builder-client
+RUN npm install -g pnpm@9
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -29,8 +29,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm --filter client build
 
 # Stage 3: 构建后端
-FROM node:22-alpine AS builder-server
-RUN corepack enable && corepack prepare pnpm@9 --activate
+FROM node:26-alpine AS builder-server
+RUN npm install -g pnpm@9
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -45,7 +45,7 @@ WORKDIR /app
 RUN pnpm --filter server build
 
 # Stage 4: 生产镜像
-FROM node:22-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
