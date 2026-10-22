@@ -2545,6 +2545,27 @@ install_rfw() {
 
     log "使用网卡: ${selected_interface}"
 
+    # ---- XDP 兼容性自动检测 ----
+    # virtio_net 等驱动要求 MTU + XDP headroom 能塞进一个内存页，否则原生 XDP 附加失败：
+    #   netlink error: virtio_net: MTU too large to enable XDP without frags
+    # 典型场景：Oracle Cloud / 部分云厂商 VNIC 默认 MTU 9000（巨型帧）。
+    # 这里按 MTU 与页大小判断，超限就自动带上 --xdp-mode skb，避免服务起来就退出。
+    local xdp_mode_arg=""
+    local xdp_mode_label="自动（原生）"
+    local iface_mtu
+    iface_mtu=$(cat "/sys/class/net/${selected_interface}/mtu" 2>/dev/null || echo 1500)
+    local page_size
+    page_size=$(getconf PAGESIZE 2>/dev/null || echo 4096)
+    local xdp_mtu_limit=$(( page_size - 576 ))   # 4K 页 → 3520
+    if [[ "${iface_mtu}" =~ ^[0-9]+$ ]] && [[ "${iface_mtu}" -gt "${xdp_mtu_limit}" ]]; then
+        xdp_mode_arg=" --xdp-mode skb"
+        xdp_mode_label="SKB 兼容模式"
+        warn "网卡 MTU=${iface_mtu} 超过原生 XDP 上限（页大小 ${page_size}，上限约 ${xdp_mtu_limit}）"
+        info "已自动改用 SKB 兼容模式（功能相同，性能略低）"
+    else
+        log "XDP 兼容性检查通过（MTU=${iface_mtu}，页大小 ${page_size}）"
+    fi
+
     # 下载 RFW 二进制文件
     step "下载 RFW 程序..."
     mkdir -p "$RFW_INSTALL_DIR"
@@ -2579,6 +2600,9 @@ install_rfw() {
         return 0
     fi
 
+    # configure_rfw_rules() 会重置 RFW_ARGS，XDP 兼容参数必须在它之后再拼上
+    RFW_ARGS+="${xdp_mode_arg}"
+
     # 创建 systemd 服务
     step "配置 RFW 服务..."
 
@@ -2606,6 +2630,16 @@ EOF
     systemctl start rfw
     systemctl enable rfw 2>/dev/null || true
 
+    # 兜底：MTU 检测没覆盖到的驱动兼容问题（驱动/内核不支持原生 XDP）时自动回退 SKB 模式
+    if ! systemctl is-active --quiet rfw 2>/dev/null && [[ "${xdp_mode_arg}" != *"--xdp-mode skb"* ]]; then
+        warn "服务未能启动，自动回退到 SKB 兼容模式重试..."
+        sed -i '/^ExecStart=/ s/$/ --xdp-mode skb/' "$RFW_SERVICE_FILE"
+        xdp_mode_label="SKB 兼容模式（自动回退）"
+        systemctl daemon-reload
+        systemctl restart rfw
+        sleep 2
+    fi
+
     # 验证
     sleep 2
     if systemctl is-active --quiet rfw 2>/dev/null; then
@@ -2617,6 +2651,7 @@ EOF
         echo -e "${GREEN}  ╚══════════════════════════════════════════════════╝${NC}"
         echo ""
         echo -e "  监听网卡  :  ${GREEN}${selected_interface}${NC}"
+        echo -e "  XDP 模式  :  ${GREEN}${xdp_mode_label}${NC}"
         echo -e "  服务状态  :  ${GREEN}运行中${NC}"
         echo -e "  屏蔽规则  :  ${GREEN}${RFW_SUMMARY_RULES}${NC}"
         echo -e "  GeoIP配置 :  ${GREEN}${RFW_SUMMARY_GEO}${NC}"
