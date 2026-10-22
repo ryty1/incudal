@@ -2499,7 +2499,7 @@ install_rfw() {
     while IFS= read -r iface; do
         [[ -z "$iface" ]] && continue
         interfaces+=("$iface")
-    done < <(ip -o link show | awk -F': ' '{print $2}' | grep -v lo)
+    done < <(ip -o link show | awk -F': ' '{print $2}' | grep -v lo | grep -v '^veth')
 
     if [[ ${#interfaces[@]} -eq 0 ]]; then
         error "未找到可用的网络接口"
@@ -2508,11 +2508,25 @@ install_rfw() {
 
     local selected_interface=""
 
-    if [[ ${#interfaces[@]} -eq 1 ]]; then
+    # 优先按默认路由自动选网卡：节点上通常有一堆 veth*，从长列表里挑容易选错
+    local default_iface=""
+    default_iface=$(ip -4 route show default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}')
+    if [[ -n "${default_iface}" ]]; then
+        local di_ip
+        di_ip=$(ip -4 addr show "${default_iface}" 2>/dev/null | awk '/inet / {print $2}' | head -n1)
+        info "检测到默认路由网卡: ${default_iface}${di_ip:+ (${di_ip})}"
+        echo -ne "  ${BOLD}使用该网卡？${NC}[Y/n]: "
+        read -r iface_confirm || true
+        if [[ ! "${iface_confirm:-Y}" =~ ^[nN]$ ]]; then
+            selected_interface="${default_iface}"
+        fi
+    fi
+
+    if [[ -z "${selected_interface}" ]] && [[ ${#interfaces[@]} -eq 1 ]]; then
         # 只有一个接口，自动选择
         selected_interface="${interfaces[0]}"
         info "自动选择网卡: ${selected_interface}"
-    else
+    elif [[ -z "${selected_interface}" ]]; then
         echo ""
         echo -e "  可用的网络接口："
         local i
@@ -2595,9 +2609,33 @@ install_rfw() {
     chmod +x "${RFW_INSTALL_DIR}/rfw"
     log "RFW 下载完成"
 
-    # 交互式配置 RFW 规则
-    if ! configure_rfw_rules; then
-        return 0
+    # 已有配置复用：重装时不必把规则重新选一遍
+    local reuse_args=""
+    if [[ -f "${RFW_SERVICE_FILE}" ]]; then
+        reuse_args=$(grep '^ExecStart=' "${RFW_SERVICE_FILE}" 2>/dev/null \
+            | sed -E 's|^ExecStart=[^ ]+||; s|--iface[= ][^ ]+||; s|--xdp-mode[= ][^ ]+||' \
+            | tr -s ' ' | sed 's/^ *//; s/ *$//')
+    fi
+
+    if [[ -n "${reuse_args}" ]]; then
+        info "检测到已安装配置: ${reuse_args}"
+        echo -ne "  ${BOLD}沿用上次的屏蔽规则？${NC}[Y/n]: "
+        read -r reuse_confirm || true
+        if [[ ! "${reuse_confirm:-Y}" =~ ^[nN]$ ]]; then
+            RFW_ARGS="${reuse_args}"
+            RFW_SUMMARY_RULES="沿用上次配置"
+            RFW_SUMMARY_GEO="沿用上次配置"
+            RFW_SUMMARY_LOG="沿用上次配置"
+        else
+            reuse_args=""
+        fi
+    fi
+
+    # 交互式配置 RFW 规则（没有可复用的配置时才逐项询问）
+    if [[ -z "${reuse_args}" ]]; then
+        if ! configure_rfw_rules; then
+            return 0
+        fi
     fi
 
     # configure_rfw_rules() 会重置 RFW_ARGS，XDP 兼容参数必须在它之后再拼上
