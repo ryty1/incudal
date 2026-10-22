@@ -22,18 +22,11 @@ import {
   getTgBindSettings,
   setTgBindSettings
 } from '../lib/bot-bridge-config.js'
+import { countryName } from '../lib/country-names.js'
 
 const PAGE_SIZE_MAX = 100
 
-// 节点国家代码 → 本地化国家名（用 Node 内置 Intl，与面板前端同一套标准）
-const countryDisplay = (() => {
-  try { return new Intl.DisplayNames(['zh-CN'], { type: 'region' }) } catch { return null }
-})()
-function countryName(code: string | null | undefined): string | null {
-  const c = String(code || '').trim().toUpperCase()
-  if (!/^[A-Z]{2}$/.test(c)) return null
-  try { return countryDisplay?.of(c) ?? null } catch { return null }
-}
+// 节点国家代码 → 中文短名：见 lib/country-names.ts（Intl 全称太长，统一收敛）
 
 const READ_LIMIT = { rateLimit: { max: 120, timeWindow: '1 minute' } }
 const CLEANUP_LIMIT = { rateLimit: { max: 6, timeWindow: '1 minute' } }

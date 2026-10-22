@@ -18,21 +18,14 @@ import { calculateRenewBilling, performRenewal } from '../db/billing-operations.
 import { apiError, ErrorCode } from '../lib/errors.js'
 import { getGuardSettings, getTgBindSettings } from '../lib/bot-bridge-config.js'
 import { selectAvailableHost } from '../db/hosts.js'
+import { countryName } from '../lib/country-names.js'
 
 const READ_LIMIT = { rateLimit: { max: 120, timeWindow: '1 minute' } }
 const WRITE_LIMIT = { rateLimit: { max: 20, timeWindow: '1 minute' } }
 
 const PROMO_CODE_PREFIX = 'INC'
 
-// 节点国家代码 → 本地化国家名（与管理员 catalog 同一套标准）
-const countryDisplay = (() => {
-  try { return new Intl.DisplayNames(['zh-CN'], { type: 'region' }) } catch { return null }
-})()
-function countryName(code: string | null | undefined): string | null {
-  const c = String(code || '').trim().toUpperCase()
-  if (!/^[A-Z]{2}$/.test(c)) return null
-  try { return countryDisplay?.of(c) ?? null } catch { return null }
-}
+// 节点国家代码 → 中文短名：见 lib/country-names.ts（Intl 全称太长，统一收敛）
 
 
 /** 生成 10 位大写字母+数字随机码（去掉 0/O/1/I 等易混淆字符）。 */
