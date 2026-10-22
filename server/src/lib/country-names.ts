@@ -17,7 +17,8 @@ const SHORT_REGION_NAMES: Record<string, string> = {
     KR: '韩国',
     US: '美国',
     SG: '新加坡',
-    AU: '澳大利亚'
+    AU: '澳大利亚',
+    ID: '印尼'
 }
 
 const regionDisplay = (() => {
