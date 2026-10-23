@@ -18,7 +18,7 @@
     --text-primary: #ededed;
     --text-secondary: #a1a1a1;
     --text-tertiary: #737373;
-    --accent: #3b82f6;
+    --accent: #4C8DFF;
     --success: #22c55e;
     --warning: #eab308;
     --error: #ef4444;
@@ -35,7 +35,7 @@
     --text-primary: #18181b;
     --text-secondary: #52525b;
     --text-tertiary: #a1a1aa;
-    --accent: #2563eb;
+    --accent: #2E6BE6;
     --success: #16a34a;
     --warning: #ca8a04;
     --error: #dc2626;
@@ -97,9 +97,20 @@
   }
 
   .dark .btn-primary {
-    @apply bg-white text-gray-900 hover:bg-gray-100 shadow-sm;
+    background-color: #4C8DFF;
+    color: #ffffff;
+    box-shadow: 0 6px 18px rgba(76, 141, 255, 0.28);
     --tw-ring-offset-color: #0a0a0a;
   }
+  .dark .btn-primary:hover {
+    background-color: #3D7BF0;
+  }
+  .dark .btn-primary:disabled {
+    background-color: rgba(76, 141, 255, 0.45);
+    color: rgba(255, 255, 255, 0.78);
+    box-shadow: none;
+  }
+
 
   .light .btn-primary {
     @apply bg-gray-900 text-white hover:bg-gray-700 shadow-sm;
@@ -1430,4 +1441,16 @@
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* ===== 主题覆盖 =====
+   用属性选择器而不是 .bg-white.text-gray-900 这类写法：
+   Tailwind 会把含工具类名的选择器当成该工具类的定义，和别处的 @apply 形成循环依赖。 */
+.dark [class~="bg-white"][class~="text-gray-900"],
+.dark [class~="bg-white"][class~="text-black"],
+.dark [class~="bg-white"][class~="text-zinc-700"],
+.dark [class~="bg-white"][class~="text-gray-700"] {
+  background-color: rgba(76, 141, 255, 0.18) !important;
+  color: #BFD6FF !important;
+  box-shadow: none !important;
 }

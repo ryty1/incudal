@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="蛋蛋云">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#16233D"/>
+      <stop offset="1" stop-color="#0B1220"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#tile)"/>
+  <g transform="translate(26,26) scale(0.9)">
+  
+  <defs>
+    <linearGradient id="yolk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFDC85"/>
+      <stop offset="1" stop-color="#FFAB16"/>
+    </linearGradient>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EDF3FF"/>
+    </linearGradient>
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6FA8FF"/>
+      <stop offset="1" stop-color="#2E6BE6"/>
+    </linearGradient>
+    <linearGradient id="ringG" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7FB2FF"/>
+      <stop offset="1" stop-color="#3D7BF0"/>
+    </linearGradient>
+    <clipPath id="eggClip">
+      <path d="M256 92c56 0 100 70 100 152s-44 136-100 136-100-56-100-136 44-152 100-152z"/>
+    </clipPath>
+  </defs>
+
+  <!-- ① 背景服务器 -->
+  <g>
+    <rect x="58" y="252" width="66" height="112" rx="14" fill="url(#metal)"/>
+    <rect x="388" y="252" width="66" height="112" rx="14" fill="url(#metal)"/>
+    <rect x="68" y="266" width="46" height="14" rx="5" fill="#1B4FC2" opacity=".55"/>
+    <rect x="68" y="290" width="46" height="14" rx="5" fill="#1B4FC2" opacity=".55"/>
+    <rect x="398" y="266" width="46" height="14" rx="5" fill="#1B4FC2" opacity=".55"/>
+    <rect x="398" y="290" width="46" height="14" rx="5" fill="#1B4FC2" opacity=".55"/>
+    <circle cx="76" cy="318" r="4" fill="#7CFFB2"/>
+    <circle cx="88" cy="318" r="4" fill="#FFD166"/>
+    <circle cx="406" cy="318" r="4" fill="#7CFFB2"/>
+    <circle cx="418" cy="318" r="4" fill="#FFD166"/>
+  </g>
+
+  <!-- ② 星环 -->
+  <g transform="rotate(-4 256 352)">
+    <ellipse cx="256" cy="352" rx="188" ry="50" fill="none" stroke="url(#ringG)" stroke-width="24"/>
+    <ellipse cx="256" cy="352" rx="188" ry="50" fill="none" stroke="#A9C8FF" stroke-width="4" opacity=".7"/>
+  </g>
+
+  <!-- ③ 云 -->
+  <g fill="#FFFFFF">
+    <circle cx="172" cy="352" r="42"/>
+    <circle cx="232" cy="336" r="54"/>
+    <circle cx="300" cy="338" r="50"/>
+    <circle cx="358" cy="352" r="38"/>
+    <rect x="140" y="340" width="232" height="54" rx="27"/>
+  </g>
+  <path d="M168 388c34 9 142 9 176 0" fill="none" stroke="#DCE8FF" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- ④ 蛋身（蛋黄） -->
+  <path d="M256 92c56 0 100 70 100 152s-44 136-100 136-100-56-100-136 44-152 100-152z" fill="url(#yolk)"/>
+
+  <!-- ⑤ 白色蛋壳（上半，波浪分界） -->
+  <g clip-path="url(#eggClip)">
+    <path d="M146 50h220v244c-19 0-23 14-41 14s-25-14-42-14-25 14-42 14-25-14-42-14-19 14-45 14z" fill="url(#shell)"/>
+    <path d="M146 308c26 0 27-14 45-14s25 14 42 14 25-14 42-14 23 14 41 14"
+          fill="none" stroke="#D6E4FF" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <!-- ⑥ 耳机 -->
+  <path d="M166 238a94 108 0 0 1 180 0" fill="none" stroke="url(#metal)" stroke-width="24" stroke-linecap="round"/>
+  <rect x="146" y="210" width="40" height="78" rx="20" fill="url(#metal)"/>
+  <rect x="326" y="210" width="40" height="78" rx="20" fill="url(#metal)"/>
+  <rect x="155" y="222" width="12" height="42" rx="6" fill="#A9C8FF" opacity=".85"/>
+  <rect x="345" y="222" width="12" height="42" rx="6" fill="#A9C8FF" opacity=".85"/>
+
+  <!-- ⑦ 表情 -->
+  <ellipse cx="219" cy="236" rx="17" ry="21" fill="#2456C8"/>
+  <ellipse cx="293" cy="236" rx="17" ry="21" fill="#2456C8"/>
+  <circle cx="224" cy="228" r="5.5" fill="#FFFFFF"/>
+  <circle cx="298" cy="228" r="5.5" fill="#FFFFFF"/>
+  <ellipse cx="192" cy="266" rx="15" ry="9" fill="#FF8FB0" opacity=".9"/>
+  <ellipse cx="320" cy="266" rx="15" ry="9" fill="#FF8FB0" opacity=".9"/>
+  <path d="M229 266c6 14 48 14 54 0" fill="none" stroke="#7A3F27" stroke-width="7" stroke-linecap="round"/>
+  <path d="M245 282c4 8 18 8 22 0" fill="#FF5C5C"/>
+
+  </g>
+</svg>
