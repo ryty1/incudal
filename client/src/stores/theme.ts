@@ -9,7 +9,7 @@ type ThemeMode = 'light' | 'dark' | 'system'
 
 export const useThemeStore = defineStore('theme', () => {
   // 主题模式: 'light' | 'dark' | 'system'
-  const mode: Ref<ThemeMode> = ref((localStorage.getItem('theme') as ThemeMode) || 'system')
+  const mode: Ref<ThemeMode> = ref((localStorage.getItem('theme') as ThemeMode) || 'dark')
 
   // 实际应用的主题
   const resolvedTheme = computed(() => {

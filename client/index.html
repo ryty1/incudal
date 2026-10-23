@@ -25,7 +25,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <script>
     (function () {
-      const theme = localStorage.getItem('theme') || 'system';
+      const theme = localStorage.getItem('theme') || 'dark';
       let resolved = theme;
       if (theme === 'system') {
         resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
