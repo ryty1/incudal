@@ -21,11 +21,24 @@ type PopupPromoPackage = {
     }>
 }
 
+const BRAND_CACHE_KEY = 'incudal_brand_cache'
+const DEFAULT_LOGO = '/logo-dandan-512.png'
+
+function readBrandCache(): { name?: string; subtitle?: string; logo?: string } {
+    try {
+        return JSON.parse(localStorage.getItem(BRAND_CACHE_KEY) || '{}')
+    } catch {
+        return {}
+    }
+}
+
 export const useConfigStore = defineStore('config', () => {
+    // 首屏用上一次成功加载的品牌信息，避免刷新时先闪一下默认/旧 logo
+    const cachedBrand = readBrandCache()
     const avatarApiBase = ref('https://api.dicebear.com/9.x')
-    const brandName = ref('Incudal')
-    const brandSubtitle = ref('基于 Incus 的低价 NAT VPS')
-    const brandLogoUrl = ref('/incudal_logo.webp')
+    const brandName = ref(cachedBrand.name || '蛋蛋云')
+    const brandSubtitle = ref(cachedBrand.subtitle || '公益 NAT 云主机')
+    const brandLogoUrl = ref(cachedBrand.logo || DEFAULT_LOGO)
     const registrationEnabled = ref(true)
     const requireInviteCode = ref(true)
     const ticketEnabled = ref(true)
@@ -67,9 +80,16 @@ export const useConfigStore = defineStore('config', () => {
                 turnstileEnabled.value = config.turnstileEnabled || false
                 turnstileSiteKey.value = config.turnstileSiteKey || null
                 avatarApiBase.value = config.avatarApiBase || 'https://api.dicebear.com/9.x'
-                brandName.value = config.brandName?.trim() || 'Incudal'
+                brandName.value = config.brandName?.trim() || '蛋蛋云'
                 brandSubtitle.value = config.brandSubtitle?.trim() || '基于 Incus 的低价 NAT VPS'
-                brandLogoUrl.value = config.brandLogoUrl?.trim() || '/incudal_logo.webp'
+                brandLogoUrl.value = config.brandLogoUrl?.trim() || DEFAULT_LOGO
+                try {
+                    localStorage.setItem(BRAND_CACHE_KEY, JSON.stringify({
+                        name: brandName.value,
+                        subtitle: brandSubtitle.value,
+                        logo: brandLogoUrl.value
+                    }))
+                } catch { /* localStorage 不可用时忽略 */ }
                 transferFee.value = config.transferFee || 0
                 balanceTransferEnabled.value = config.balanceTransferEnabled ?? false
                 balanceTransferFee.value = config.balanceTransferFee || 0

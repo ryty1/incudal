@@ -40,7 +40,7 @@ themeStore.init()
 import { useConfigStore } from './stores/config'
 const configStore = useConfigStore()
 configStore.loadPublicConfig().then(() => {
-  const logoUrl = configStore.brandLogoUrl?.trim() || '/incudal_logo.webp'
+  const logoUrl = configStore.brandLogoUrl?.trim() || '/logo-dandan-512.png'
   const icon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
   const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]') as HTMLLinkElement | null
   if (icon) {
