@@ -3522,7 +3522,9 @@ if [ -n "$TRAFFIC_OK" ]; then
     if [ -n "$T_LIMIT" ] && [ "$T_LIMIT" != "0" ] && [ -n "$T_MODE" ]; then
         echo "---- ⑪ 安装流量控制（上限 ${T_LIMIT}GB / 口径 ${T_MODE}）----"
         mkdir -p /root/traffic_routing
-        if curl -fsSL --max-time 120 --connect-timeout 15 "${PANEL_URL}/traffic_ctrl.sh" -o /root/traffic_routing/traffic_ctrl.sh 2>/dev/null; then
+        # 根路径由老部署的 nginx 静态托管；新部署走面板路由 /api/hosts/traffic_ctrl.sh
+        if curl -fsSL --max-time 120 --connect-timeout 15 "${PANEL_URL}/traffic_ctrl.sh" -o /root/traffic_routing/traffic_ctrl.sh 2>/dev/null \
+           || curl -fsSL --max-time 120 --connect-timeout 15 "${PANEL_URL}/api/hosts/traffic_ctrl.sh" -o /root/traffic_routing/traffic_ctrl.sh 2>/dev/null; then
             chmod +x /root/traffic_routing/traffic_ctrl.sh
             cd /root/traffic_routing
             mkdir -p /etc/incudal-traffic
