@@ -316,6 +316,10 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
       if (autoChange !== null) {
         pending = !queueTrigger('set-auto', autoChange ? 'on' : 'off').ok || pending
       }
+      // 改了保留天数 → 立刻下发一次清理，不用等下一次备份才生效
+      if (patch.KEEP_DAYS !== undefined || patch.GITHUB_KEEP_DAYS !== undefined) {
+        pending = !queueTrigger('prune').ok || pending
+      }
       return { ok: true, changed: Object.keys(patch).length, pending }
     }
   )

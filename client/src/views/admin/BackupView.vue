@@ -489,7 +489,10 @@ async function saveConfig() {
     else if (d.pending) {
       ok('配置已保存，宿主机将在 1 分钟内应用')
       // 后台自动回读一次，省得用户自己刷新
-      window.setTimeout(() => { loadConfig().catch(() => {}) }, 65_000)
+      window.setTimeout(() => {
+        loadConfig().catch(() => {})
+        loadList().catch(() => {})
+      }, 65_000)
     }
     else ok('配置已保存' + (d.scheduleApplied ? '，自动备份时间已更新为 ' + d.scheduleApplied : ''))
     await loadConfig()

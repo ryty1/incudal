@@ -208,6 +208,29 @@ case "$ACTION" in
       echo "$TS|1|提交失败" > "$RES"
     fi
     ;;
+  prune)
+    # 按当前保留天数立刻清理（本地 + 私库），不用等下一次备份
+    LDEL=0; RDEL=0
+    while IFS= read -r f; do [ -n "$f" ] && rm -f "$f" && LDEL=$((LDEL+1)); done < <(
+      find "$DIR" -maxdepth 1 -type f -name 'incudal-*.dump' -mtime +${KEEP_DAYS:-14} 2>/dev/null
+    )
+    if [ -d "$REPO_DIR_GIT/.git" ]; then
+      cd "$REPO_DIR_GIT" || true
+      while IFS= read -r f; do
+        [ -n "$f" ] || continue
+        rm -f "$f"
+        git rm --quiet --cached --ignore-unmatch "$(basename "$f")" 2>/dev/null || true
+        RDEL=$((RDEL+1))
+      done < <(find "$REPO_DIR_GIT" -maxdepth 1 -type f -name 'incudal-*.dump' -mtime +${GITHUB_KEEP_DAYS:-7} 2>/dev/null)
+      if [ "$RDEL" -gt 0 ]; then
+        git add -A >/dev/null 2>&1
+        git -c user.name="incudal-backup" -c user.email="backup@local" commit -q -m "prune: 删除 $RDEL 个超过 ${GITHUB_KEEP_DAYS:-7} 天的备份" >/dev/null 2>&1 || true
+        git push --quiet origin "$GITHUB_BRANCH" >/dev/null 2>&1 || true
+      fi
+    fi
+    gen_gitlist
+    echo "$TS|0|已清理：本地 $LDEL 个（保留 ${KEEP_DAYS:-14} 天），私库 $RDEL 个（保留 ${GITHUB_KEEP_DAYS:-7} 天）" > "$RES"
+    ;;
   *)
     echo "$TS|1|未知动作" > "$RES"
     ;;
