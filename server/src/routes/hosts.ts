@@ -1139,6 +1139,39 @@ export default async function hostRoutes(fastify: FastifyInstance) {
   })
   }
 
+  // 备份脚本分发：宿主机侧的三个脚本（镜像里装不到宿主机，只能由面板下发）
+  for (const backupScript of ['backup.sh', 'restore.sh', 'trigger.sh']) {
+    fastify.get(`/backup-scripts/${backupScript}`, async (request, reply) => {
+      try {
+        const p = join(__dirname, `../../templates/backup/${backupScript}`)
+        const body = readFileSync(p, 'utf-8')
+        return reply
+          .header('Content-Type', 'text/plain; charset=utf-8')
+          .header('Cache-Control', 'no-store')
+          .send(body)
+      } catch (err) {
+        request.log.error(err, 'Failed to serve backup script')
+        return reply.code(500).send('# Error: backup script not found')
+      }
+    })
+  }
+
+  // 备份脚本远程安装器：curl -fsSL <panel>/api/hosts/install-backup.sh | sudo bash
+  fastify.get('/install-backup.sh', async (request, reply) => {
+    try {
+      const p = join(__dirname, '../../templates/backup/install-remote.sh')
+      let script = readFileSync(p, 'utf-8')
+      script = script.replace('__PANEL_URL__', derivePanelUrl(request))
+      return reply
+        .header('Content-Type', 'text/plain; charset=utf-8')
+        .header('Cache-Control', 'no-store')
+        .send(script)
+    } catch (err) {
+      request.log.error(err, 'Failed to serve install-backup.sh')
+      return reply.code(500).send('# Error: installer not found')
+    }
+  })
+
   // 通用安装脚本下载接口（无需鉴权，直接返回脚本模板，让用户在执行时输入 token）
   fastify.get('/install.sh', async (request, reply) => {
     try {
