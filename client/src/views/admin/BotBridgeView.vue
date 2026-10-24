@@ -255,7 +255,7 @@ const settingsSaving = ref(false)
 const settingsTokenInput = ref('')
 const showToken = ref(false)
 // 守护同步（面板侧决定开关与周期，机器人读 /guard/meta 后照此执行）
-const guardEnabled = ref(true)
+const guardEnabled = ref(false)
 const guardIntervalMinutes = ref(15)
 // 守护周期支持「分钟 / 小时 / 天」三种单位，内部统一存分钟
 const guardIntervalValue = ref(15)
@@ -284,7 +284,7 @@ function guardIntervalToMinutes(): number {
   return Math.min(43200, v * (GUARD_UNIT_MINUTES[guardIntervalUnit.value] || 1))
 }
 const expiryReminderDays = ref(5)
-const expiryReminderEnabled = ref(true)
+const expiryReminderEnabled = ref(false)
 const savingExpiry = ref(false)
 const savingGuard = ref(false)
 const testingGuard = ref(false)
@@ -392,10 +392,10 @@ async function loadSettings() {
   settingsLoading.value = true
   try {
     settings.value = await api.admin.getBotBridgeSettings()
-    guardEnabled.value = settings.value.guardEnabled !== false
+    guardEnabled.value = settings.value.guardEnabled === true
     applyGuardIntervalFromMinutes(Number(settings.value.guardIntervalMinutes || 15))
     expiryReminderDays.value = Number(settings.value.expiryReminderDays ?? 5)
-    expiryReminderEnabled.value = settings.value.expiryReminderEnabled !== false
+    expiryReminderEnabled.value = settings.value.expiryReminderEnabled === true
     tgBindEnabled.value = settings.value.tgBindEnabled === true
     tgBindGroupChatId.value = String(settings.value.tgBindGroupChatId || '')
     tgBindBotTokenInput.value = ''
@@ -416,7 +416,7 @@ async function saveGuardSettings() {
       guardEnabled: guardEnabled.value === true,
       guardIntervalMinutes: guardIntervalToMinutes()
     })
-    guardEnabled.value = settings.value.guardEnabled !== false
+    guardEnabled.value = settings.value.guardEnabled === true
     applyGuardIntervalFromMinutes(Number(settings.value.guardIntervalMinutes || 15))
     toast.success(t('admin.botBridge.settings.guardSaved'))
   } catch (err: any) {
@@ -435,7 +435,7 @@ async function saveExpirySettings() {
       expiryReminderEnabled: expiryReminderEnabled.value === true,
       expiryReminderDays: Math.min(90, Math.max(0, Math.floor(Number(expiryReminderDays.value) || 0)))
     })
-    expiryReminderEnabled.value = settings.value.expiryReminderEnabled !== false
+    expiryReminderEnabled.value = settings.value.expiryReminderEnabled === true
     expiryReminderDays.value = Number(settings.value.expiryReminderDays ?? 5)
     toast.success(t('admin.botBridge.settings.expirySaved'))
   } catch (err: any) {
