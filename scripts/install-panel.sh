@@ -1120,6 +1120,14 @@ do_install() {
     # 启动服务
     start_service
 
+    # 备份脚本（宿主机侧）：只装触发器 cron，自动备份默认关闭
+    local _sd
+    _sd="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "$_sd/install-backup.sh" ]]; then
+        info "安装备份脚本（自动备份默认关闭）..."
+        bash "$_sd/install-backup.sh" || warn "备份脚本安装失败，可稍后手动执行 scripts/install-backup.sh"
+    fi
+
     # 显示结果
     show_result
 }
