@@ -237,8 +237,10 @@ generate_panel_cert() {
         -subj "/CN=incudal-panel/O=Incudal" \
         2>/dev/null
 
-    chmod 644 "$cert_file" "$key_file"
-    # 容器内运行用户是 1001:65533；目录归它所有，运行时才能自动续期/重建
+    # 私钥只给属主读（容器内是 uid 1001）；root:root 600 会让容器 EACCES
+    chmod 600 "$key_file"
+    chmod 644 "$cert_file"
+    chown 1001:65533 "$cert_file" "$key_file" 2>/dev/null || true
     chown -R 1001:65533 "$cert_dir" 2>/dev/null || true
 
     log "面板客户端证书生成完成（CN=incudal-panel，10 年）"

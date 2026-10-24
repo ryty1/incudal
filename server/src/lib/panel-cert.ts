@@ -12,7 +12,7 @@
  * 证书必须**持久化**：换一张证书，已安装的节点会因为指纹不匹配而全部失联。
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdirSync, chmodSync, statSync } from 'node:fs'
+import { existsSync, mkdirSync, chmodSync, statSync, accessSync, constants } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -38,10 +38,45 @@ export interface EnsureCertResult {
   error?: string
 }
 
+/** 把 EACCES/ENOENT 之类翻译成人能看懂、能直接执行的提示。 */
+export function describeCertError(paths: PanelCertPaths, err: unknown): string {
+  const e = err as NodeJS.ErrnoException
+  const uid = typeof process.getuid === 'function' ? process.getuid() : -1
+  const target = e?.path || paths.key
+
+  if (e?.code === 'EACCES' || e?.code === 'EPERM') {
+    let owner = ''
+    try {
+      const st = statSync(target)
+      owner = `当前 ${st.uid}:${st.gid} ${(st.mode & 0o777).toString(8)}`
+    } catch { /* 忽略 */ }
+    return `证书文件权限不足（${target}，${owner || '无法读取属主'}，面板进程 uid=${uid}）。` +
+      `修复：sudo chown 1001:65533 ${paths.crt} ${paths.key} && sudo chmod 600 ${paths.key} && sudo chmod 644 ${paths.crt}`
+  }
+  if (e?.code === 'ENOENT') {
+    return `证书文件不存在（${target}）。修复：重启面板会自动生成，或执行 sudo bash scripts/install-docker.sh`
+  }
+  return `证书读取失败（${target}）：${e?.message || String(err)}`
+}
+
+/** 证书是否真的可读（root 生成的 600 文件，容器内 uid 1001 会 EACCES）。 */
+function certReadable(paths: PanelCertPaths): string | null {
+  for (const p of [paths.crt, paths.key]) {
+    try {
+      accessSync(p, constants.R_OK)
+    } catch (e) {
+      return describeCertError(paths, e)
+    }
+  }
+  return null
+}
+
 /** 生成自签名客户端证书（幂等：已存在就直接返回）。 */
 export function ensurePanelCert(): EnsureCertResult {
   const paths = panelCertPaths()
   if (existsSync(paths.crt) && existsSync(paths.key)) {
+    const unreadable = certReadable(paths)
+    if (unreadable) return { ok: false, generated: false, paths, error: unreadable }
     return { ok: true, generated: false, paths }
   }
 

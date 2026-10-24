@@ -16,7 +16,7 @@ import { prisma } from '../db/prisma.js'
 import { checkHostingAccess } from '../lib/hosting-access.js'
 import { createInboxMessage } from '../db/inbox.js'
 import { createLog } from '../db/logs.js'
-import { ensurePanelCert } from '../lib/panel-cert.js'
+import { ensurePanelCert, describeCertError } from '../lib/panel-cert.js'
 import { apiError, ErrorCode, type ErrorCodeType } from '../lib/errors.js'
 import { createInstanceTask, getActiveTaskForInstance } from '../db/instance-tasks.js'
 import { getSSHKeyById, getSSHKeysByUserId } from '../db/ssh-keys.js'
@@ -1453,19 +1453,23 @@ export default async function hostRoutes(fastify: FastifyInstance) {
     const hostPort = urlObj.port || '8443'
     const baseUrl = `${urlObj.protocol}//${urlObj.host}`
 
-    // 准备证书路径
-    const certPath = process.env.PANEL_CRT_PATH || join(__dirname, '../../certs/client.crt')
-    const keyPath = process.env.PANEL_KEY_PATH || join(__dirname, '../../certs/client.key')
+    // 准备证书（缺失自动生成；权限不足要报清楚，别只说「请检查服务器配置」）
+    const certInfo = ensurePanelCert()
+    if (!certInfo.ok) {
+      request.log.error({ err: certInfo.error }, 'Panel certificate unavailable')
+      return reply.code(500).send({ error: certInfo.error || '面板证书不可用' })
+    }
 
     let cert: Buffer
     let key: Buffer
 
     try {
-      cert = readFileSync(certPath)
-      key = readFileSync(keyPath)
+      cert = readFileSync(certInfo.paths.crt)
+      key = readFileSync(certInfo.paths.key)
     } catch (err) {
-      request.log.error(err, 'Failed to read panel certificate files')
-      return reply.code(500).send({ error: '面板证书文件读取失败，请检查服务器配置' })
+      const reason = describeCertError(certInfo.paths, err)
+      request.log.error({ err, reason }, 'Failed to read panel certificate files')
+      return reply.code(500).send({ error: reason })
     }
 
     // 创建 undici Agent（携带面板的 Client 证书）
@@ -1558,8 +1562,8 @@ export default async function hostRoutes(fastify: FastifyInstance) {
         installTokenExpire: null,
         certDownloadCount: 0,  // 重置下载次数
         certDownloadExpire: null,  // 清空证书下载有效期
-        certPath: certPath,
-        keyPath: keyPath,
+        certPath: certInfo.paths.crt,
+        keyPath: certInfo.paths.key,
         architecture: hostArchitecture
       }
       // 仅在检测到 IPv6 且当前未手动配置时自动填入
