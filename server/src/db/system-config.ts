@@ -129,6 +129,9 @@ export async function initSystemConfig(): Promise<void> {
         { key: 'bot_bridge_token', value: '', type: 'secret', label: '机器人桥接 Token', description: '外部机器人（tg-antispam 等）访问 /api/bot/* 的共享密钥；留空 = 该组接口整体返回 404' },
         { key: 'guard_enabled', value: '0', type: 'boolean', label: '守护开关', description: '是否启用「不在群成员」守护同步；关闭后机器人不再做成员巡检' },
         { key: 'guard_interval_minutes', value: '15', type: 'number', label: '守护周期(分钟)', description: '机器人多久巡检一次群成员，1~1440 分钟' },
+        // 实例到期提醒（独立于守护开关）
+        { key: 'expiry_reminder_enabled', value: '0', type: 'boolean', label: '到期提醒开关', description: '是否让机器人推送实例到期提醒' },
+        { key: 'expiry_reminder_days', value: '5', type: 'number', label: '到期提醒天数', description: '实例到期前多少天开始提醒，0~90 天' },
         // TGID 绑定（独立于「TG 设置」卡片里的面板机器人配置）
         { key: 'tg_bind_enabled', value: '0', type: 'boolean', label: 'TGID 绑定开关', description: '是否开放「用户填写 TGID」的绑定入口' },
         { key: 'tg_bind_bot_token', value: '', type: 'secret', label: 'TGID 绑定用 Bot Token', description: '用于调用 getChatMember 校验在群；只需要是群成员，不必设 webhook' },
@@ -286,9 +289,11 @@ export async function getSystemConfigValueWithUpdatedAt(key: string): Promise<{ 
  * PERF001: 更新后清除缓存
  */
 export async function updateSystemConfig(key: string, value: string): Promise<void> {
-    await prisma.systemConfig.update({
+    // upsert：键不存在时自动创建，避免 P2025 → 接口 500
+    await prisma.systemConfig.upsert({
         where: { key },
-        data: { value }
+        update: { value },
+        create: { key, value }
     })
     // PERF001: 清除缓存
     invalidateCachedConfigs([key])
@@ -321,9 +326,12 @@ export async function updateSystemConfigs(configs: Array<{ key: string; value: s
     }
 
     if (updates.length > 0) {
-        await prisma.$transaction(updates.map(config => prisma.systemConfig.update({
+        // 必须用 upsert：代码里新增的配置键在库里可能还不存在，
+        // 用 update 会抛 P2025（No record was found for an update）→ 接口 500
+        await prisma.$transaction(updates.map(config => prisma.systemConfig.upsert({
             where: { key: config.key },
-            data: { value: config.value }
+            update: { value: config.value },
+            create: { key: config.key, value: config.value }
         })))
     }
 
