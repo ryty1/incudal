@@ -537,6 +537,7 @@ export default {
         feeNote: '手續費',
         payableAmount: '應付金額',
         pay: '立即支付',
+        void: '取消訂單',
         redeemCard: '兌換卡密',
         rechargeCardNo: '卡密編號',
         rechargeCardPassword: '卡密密碼',

@@ -529,6 +529,7 @@ export default {
         feeNote: '手续费',
         payableAmount: '应付金额',
         pay: '立即支付',
+        void: '取消订单',
         redeemCard: '兑换卡密',
         rechargeCardNo: '卡密编号',
         rechargeCardPassword: '卡密密码',

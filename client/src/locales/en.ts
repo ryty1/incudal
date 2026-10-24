@@ -529,6 +529,7 @@ export default {
         feeNote: 'Fee',
         payableAmount: 'Amount Due',
         pay: 'Pay Now',
+        void: 'Cancel',
         redeemCard: 'Redeem Card',
         rechargeCardNo: 'Card Number',
         rechargeCardPassword: 'Card Password',
