@@ -332,6 +332,9 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
     volumes:
       - ./server/certs:/app/server/certs:ro
+      # 备份功能：容器需要读写宿主机的备份目录与配置文件
+      - /srv/incudal-backups:/backup
+      - /srv/incudal-backup.conf:/backup/incudal-backup.conf
     depends_on:
       db:
         condition: service_healthy
@@ -386,6 +389,15 @@ start_docker() {
 
     info "拉取最新镜像..."
     docker compose pull 2>&1 | tail -5
+
+    # 备份脚本要在容器启动前装好：否则 /srv/incudal-backup.conf 不存在时
+    # docker 会把 bind mount 的目标建成目录，面板写配置必然失败
+    local _sd
+    _sd="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [[ -f "$_sd/install-backup.sh" ]]; then
+        info "安装备份脚本（自动备份默认关闭）..."
+        bash "$_sd/install-backup.sh" >&2 || warn "备份脚本安装失败，可稍后手动执行 scripts/install-backup.sh"
+    fi
 
     info "启动容器..."
     docker compose up -d 2>&1

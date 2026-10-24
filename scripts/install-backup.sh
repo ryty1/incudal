@@ -47,6 +47,17 @@ mkdir -p "$BACKUP_DIR"
 chmod 755 "$BACKUP_DIR"
 
 # 配置文件：不存在才创建，且默认 AUTO_BACKUP=off
+# 特例：如果 docker 先把 bind mount 的目标建成了目录（容器在文件存在前启动过），
+# 这里清掉空目录再建文件，否则面板永远写不了配置。
+if [[ -d "$CONF" ]]; then
+  if rmdir "$CONF" 2>/dev/null; then
+    ok "清理了误建的目录 $CONF"
+  else
+    err "$CONF 是目录且非空，请先手动处理（mv $CONF ${CONF}.bak 后重跑）"
+    exit 1
+  fi
+fi
+
 if [[ ! -f "$CONF" ]]; then
   cat > "$CONF" <<'CONFEOF'
 # ===== Incudal 备份配置（改完直接生效，下次 cron 用新值）=====
