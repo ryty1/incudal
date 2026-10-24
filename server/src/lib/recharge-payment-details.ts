@@ -12,6 +12,13 @@ export interface RechargePaymentDetails {
     feeMode?: 'surcharge' | 'deduct'
     paymentMethod?: string | null
   }
+  /** 法币→加密货币渠道（如 U付 USDT）：下单时锁定金额与汇率，回调按它校验 */
+  crypto?: {
+    currency?: string | null       // 'USDT'
+    amount?: number | null         // 应支付的币种数量
+    rate?: number | null           // 下单时锁定的汇率（CNY/USDT）
+    rateSource?: string | null     // env | coingecko | er-api | manual
+  }
   heleket?: {
     invoiceCurrency?: string | null
     invoiceAmount?: number | null
@@ -77,12 +84,14 @@ export function mergeRechargeAmountDetails(
     feeFixed: number
     feeMode?: 'surcharge' | 'deduct'
     paymentMethod?: string | null
+    crypto?: RechargePaymentDetails['crypto']
   }
 ): RechargePaymentDetails {
   const existing = readRechargePaymentDetails(existingValue)
 
   return {
     ...existing,
+    ...(input.crypto ? { crypto: input.crypto } : {}),
     recharge: {
       ...existing.recharge,
       amount: input.amount,

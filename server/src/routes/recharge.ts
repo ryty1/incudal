@@ -5,6 +5,7 @@
 import { FastifyInstance } from 'fastify'
 import * as db from '../db/index.js'
 import * as crypto from 'crypto'
+import { getUsdtCnyRate, cnyToUsdt } from '../lib/usdt-rate.js'
 import { createEpayClient, type EpayConfig, type EpayConfigV1, type EpayConfigV2, type CallbackData, type EpayVersion, type VerifyResult } from '../lib/epay.js'
 import {
   buildHeleketConfig,
@@ -430,7 +431,8 @@ async function createRechargePayUrl(
   orderNo: string,
   amount: number,
   paymentMethod: string | undefined,
-  urls: { notifyUrl: string; returnUrl: string; successUrl: string }
+  urls: { notifyUrl: string; returnUrl: string; successUrl: string },
+  crypto?: { currency: string; amount: number; rate: number }
 ): Promise<string | null> {
   if (provider.type === 'yipay') {
     const { epayConfig, valid, error } = buildEpayConfig(config)
@@ -439,6 +441,19 @@ async function createRechargePayUrl(
     }
 
     const epay = createEpayClient(epayConfig)
+
+    // USDT 渠道（U付）：money 是币种数量，type=usdt，商品名带上汇率方便对账
+    if (crypto && crypto.currency === 'USDT') {
+      return epay.getPayLink({
+        type: 'usdt',
+        out_trade_no: orderNo,
+        name: `账户充值 (汇率 ${crypto.rate} CNY/USDT)`,
+        money: crypto.amount.toFixed(2),
+        notify_url: urls.notifyUrl,
+        return_url: urls.successUrl
+      })
+    }
+
     return epay.getPayLink({
       type: paymentMethod || 'alipay',
       out_trade_no: orderNo,
@@ -742,6 +757,27 @@ export default async function rechargeRoutes(app: FastifyInstance): Promise<void
       const providerPaymentDetails = provider.type === 'heleket'
         ? buildHeleketInvoicePaymentDetails(orderNo, payableAmount, buildHeleketConfig(providerConfig).heleketConfig)
         : { kind: provider.type }
+      // USDT 渠道（U付）：下单时锁汇率，回调按锁定值校验，避免汇率波动导致金额不符
+      let cryptoInfo: { currency: string; amount: number; rate: number; rateSource: string } | undefined
+      if (provider.type === 'yipay' && String(providerConfig.currency || '').toUpperCase() === 'USDT') {
+        const manualRate = Number(providerConfig.usdt_rate || '')
+        let rate = Number.isFinite(manualRate) && manualRate >= 1 && manualRate <= 100 ? manualRate : 0
+        let rateSource = 'manual'
+        if (!rate) {
+          const fetched = await getUsdtCnyRate()
+          if (!fetched) {
+            return reply.status(503).send({ error: 'USDT 汇率获取失败，请稍后重试或配置 USDT_CNY_RATE' })
+          }
+          rate = fetched.rate
+          rateSource = fetched.source
+        }
+        const usdtAmount = cnyToUsdt(payableAmount, rate)
+        if (!(usdtAmount > 0)) {
+          return reply.status(400).send({ error: 'USDT 金额换算失败' })
+        }
+        cryptoInfo = { currency: 'USDT', amount: usdtAmount, rate, rateSource }
+      }
+
       const paymentDetails = mergeRechargeAmountDetails(providerPaymentDetails, {
         amount: normalizedAmount,
         payableAmount,
@@ -749,7 +785,10 @@ export default async function rechargeRoutes(app: FastifyInstance): Promise<void
         feeRate: feeConfig.feeRate,
         feeFixed: feeConfig.feeFixed,
         feeMode: provider.type === 'yipay' ? 'surcharge' : 'deduct',
-        paymentMethod: selectedPaymentMethod || null
+        paymentMethod: selectedPaymentMethod || null,
+        crypto: cryptoInfo
+          ? { currency: cryptoInfo.currency, amount: cryptoInfo.amount, rate: cryptoInfo.rate, rateSource: cryptoInfo.rateSource }
+          : undefined
       })
 
       // 创建订单
@@ -779,7 +818,8 @@ export default async function rechargeRoutes(app: FastifyInstance): Promise<void
           order.orderNo,
           payableAmount,
           selectedPaymentMethod,
-          urls
+          urls,
+          cryptoInfo
         )
       } catch (payError) {
         request.log.warn({ providerId, orderNo: order.orderNo, error: payError }, '生成支付链接失败')
@@ -2345,13 +2385,19 @@ export default async function rechargeRoutes(app: FastifyInstance): Promise<void
         return reply.status(400).send({ error: '支付金额不足' })
       }
     } else {
-      const diff = Math.abs(paidActualAmount - expectedAmount)
+      // USDT 渠道：回调 money 是 USDT，必须拿订单里锁定的 USDT 金额比对，不能拿人民币金额比
+      const isCryptoChannel = provider.type === 'yipay' && String(config.currency || '').toUpperCase() === 'USDT'
+      const cryptoDetails = (paymentDetails as { crypto?: { amount?: number | null } } | undefined)?.crypto
+      const lockedCryptoAmount = Number(cryptoDetails?.amount || 0)
+      const compareTarget = isCryptoChannel && lockedCryptoAmount > 0 ? lockedCryptoAmount : expectedAmount
+      const diff = Math.abs(paidActualAmount - compareTarget)
       if (diff > AMOUNT_TOLERANCE_CENTS / 100) {
         request.log.warn({
           orderNo,
-          expected: expectedAmount,
+          expected: compareTarget,
           actual: paidActualAmount,
-          diff
+          diff,
+          currency: isCryptoChannel ? 'USDT' : 'CNY'
         }, '支付金额与订单金额不匹配，拒绝处理')
         await createLog(
           record.userId,

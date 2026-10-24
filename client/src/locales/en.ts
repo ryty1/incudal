@@ -519,6 +519,7 @@ export default {
           alipay: 'Alipay',
           wxpay: 'WeChat Pay',
           qqpay: 'QQ Wallet',
+          usdt: 'USDT',
           bank: 'Bank Card',
           jdpay: 'JD Pay',
         },

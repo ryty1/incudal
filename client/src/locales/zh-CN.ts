@@ -519,6 +519,7 @@ export default {
           alipay: '支付宝',
           wxpay: '微信支付',
           qqpay: 'QQ钱包',
+          usdt: 'USDT (泰达币)',
           bank: '网银支付',
           jdpay: '京东支付',
         },

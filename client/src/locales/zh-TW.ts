@@ -527,6 +527,7 @@ export default {
           alipay: '支付寶',
           wxpay: '微信支付',
           qqpay: 'QQ錢包',
+          usdt: 'USDT (泰達幣)',
           bank: '網銀支付',
           jdpay: '京東支付',
         },

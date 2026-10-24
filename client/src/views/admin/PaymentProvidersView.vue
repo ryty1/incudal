@@ -44,7 +44,7 @@ const formData = ref({
 })
 
 const DEFAULT_YIPAY_METHODS = ['alipay', 'wxpay']
-const YIPAY_METHODS = ['alipay', 'wxpay', 'qqpay']
+const YIPAY_METHODS = ['alipay', 'wxpay', 'qqpay', 'usdt']
 const IMPLEMENTED_PROVIDER_TYPES = new Set(['yipay', 'heleket', 'recharge_card'])
 
 function getConfigMethodFees(config: Record<string, unknown>): Record<string, { feeRate?: number; feeFixed?: number }> {
@@ -157,6 +157,8 @@ function getDefaultConfig(type: string, version?: string): Record<string, unknow
           apiurl: '',
           pid: '',
           key: '',
+          currency: 'CNY',
+          usdt_rate: '',
           methodFees: {}
         }
       }
@@ -166,6 +168,8 @@ function getDefaultConfig(type: string, version?: string): Record<string, unknow
         pid: '',
         platform_public_key: '',
         merchant_private_key: '',
+        currency: 'CNY',
+        usdt_rate: '',
         methodFees: {}
       }
     case 'heleket':
@@ -560,6 +564,30 @@ function togglePaymentMethod(method: string) {
                   <p class="text-xs text-themed-muted mt-1">{{ $t('admin.paymentProviders.config.merchantPrivateKeyHint') }}</p>
                 </div>
               </template>
+
+              <!-- 结算币种：USDT 渠道（U付）会按汇率把人民币折算成 USDT -->
+              <div>
+                <label class="label">结算币种</label>
+                <select v-model="(formData.config as any).currency" class="input w-full">
+                  <option value="CNY">人民币 CNY（云熠码支付等普通易支付）</option>
+                  <option value="USDT">USDT（U付等加密渠道，按汇率换算）</option>
+                </select>
+                <p class="text-xs text-themed-muted mt-1">
+                  选 USDT 时，下单金额 = 人民币 / 汇率，支付方式固定为 usdt。
+                </p>
+              </div>
+              <div v-if="String((formData.config as any).currency || 'CNY').toUpperCase() === 'USDT'">
+                <label class="label">固定汇率（可选）</label>
+                <input
+                  v-model="(formData.config as any).usdt_rate"
+                  type="text"
+                  class="input w-full"
+                  placeholder="留空则自动取价（CoinGecko / er-api）"
+                />
+                <p class="text-xs text-themed-muted mt-1">
+                  单位：1 USDT = ? CNY。填了就用这个值；也可用环境变量 USDT_CNY_RATE 全局锁定。
+                </p>
+              </div>
 
               <!-- 支付方式选择（V1/V2通用） -->
               <div>
