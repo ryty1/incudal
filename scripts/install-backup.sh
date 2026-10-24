@@ -15,7 +15,8 @@
 set -uo pipefail
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../server/templates/backup" 2>/dev/null && pwd)"
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)"
+# 项目目录：默认取脚本所在仓库根；用 APP_DIR=/path 可覆盖（比如从别处 clone 过来跑）
+PROJECT_DIR="${APP_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)}"
 BIN_DIR="/usr/local/bin"
 BACKUP_DIR="/srv/incudal-backups"
 CONF="/srv/incudal-backup.conf"
