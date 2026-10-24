@@ -1114,7 +1114,10 @@ export default async function hostRoutes(fastify: FastifyInstance) {
 
   // 节点内核/内存调优脚本（install.sh 第 ⑨ 步拉取；无需鉴权，幂等脚本）
   // 之前这个文件只存在于宿主机 /var/www/html，仓库里没有 → 新装环境 404，第 ⑨ 步永远跳过
-  for (const tuneScript of ['incus-tune.sh', 'incus-tune-all.sh', 'traffic_ctrl.sh']) {
+  for (const tuneScript of [
+    'incus-tune.sh', 'incus-tune-all.sh', 'traffic_ctrl.sh',
+    'incus-dnat-convert.sh', 'incus-dnat-sync.sh', 'incus-dnat-audit.sh', 'incudal-ula-guard.sh'
+  ]) {
   fastify.get(`/${tuneScript}`, async (request, reply) => {
     try {
       const scriptPath = join(__dirname, `../../templates/${tuneScript}`)
