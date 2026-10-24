@@ -177,6 +177,11 @@ function hostReadiness(): { scripts: boolean; trigger: boolean; ageSec: number |
   return { scripts, trigger, ageSec, reason }
 }
 
+// GitHub 备份列表缓存：/admin/backup/list 依赖宿主机触发器（每分钟一次），
+// 同步等结果会让页面「刷新」卡几十秒，所以缓存 + 短超时。
+let gitListCache: { at: number; detail: string } | null = null
+const GIT_LIST_TTL_MS = 60_000
+
 export default async function backupRoutes(fastify: FastifyInstance): Promise<void> {
   // ---------------- 读配置 ----------------
   fastify.get('/admin/backup/config', { onRequest: [fastify.authenticate, fastify.requireAdmin] }, async () => {
@@ -301,24 +306,17 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
       await logAdminAction(request.user.id, 'backup.config.update', { resourceType: 'backup_config', newValue: { keys: Object.keys(patch) } }).catch(() => {})
 
       // 时间/时区变了 → 立刻重写宿主机 crontab
-      // 宿主机触发器 cron 是每分钟一次，等待窗口必须 > 60 秒，
-      // 否则明明执行成功了也会误报「未确认更新」。
-      const TRIGGER_WAIT_MS = 80_000
-      let scheduleApplied: string | null = null
+      // 不再同步等宿主机执行（那是 60 秒级的 cron，等待会让页面卡住甚至被网关掐成 502）。
+      // 只把请求写下去，立即返回；宿主机最多 1 分钟内应用。
       let pending = false
       if (patch.BACKUP_TIME !== undefined || patch.BACKUP_TZ !== undefined) {
         const c = readConf()
-        const out = await fireTrigger('set-schedule', c.BACKUP_TIME || '03:10', c.BACKUP_TZ || 'Asia/Shanghai', TRIGGER_WAIT_MS)
-        if (out.ok) scheduleApplied = (c.BACKUP_TIME || '03:10') + ' (' + (c.BACKUP_TZ || 'Asia/Shanghai') + ')'
-        else pending = true
+        pending = !queueTrigger('set-schedule', c.BACKUP_TIME || '03:10', c.BACKUP_TZ || 'Asia/Shanghai').ok || pending
       }
-      let autoApplied: string | null = null
       if (autoChange !== null) {
-        const out = await fireTrigger('set-auto', autoChange ? 'on' : 'off', undefined, TRIGGER_WAIT_MS)
-        if (out.ok) autoApplied = autoChange ? 'on' : 'off'
-        else pending = true
+        pending = !queueTrigger('set-auto', autoChange ? 'on' : 'off').ok || pending
       }
-      return { ok: true, changed: Object.keys(patch).length, scheduleApplied, autoApplied, pending }
+      return { ok: true, changed: Object.keys(patch).length, pending }
     }
   )
 
@@ -363,10 +361,34 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
 
     // 启用 GitHub 时本地不留副本 → 列表与统计都以 GitHub 仓库为准
     if (ghOn) {
-      const out = await fireTrigger('git-list')
+      let detail = ''
+      // 1) 优先读宿主机触发器每分钟写的 .gitlist —— 无需等待，秒开
+      try {
+        const st = statSync(join(BACKUP_DIR, '.gitlist'))
+        if (Date.now() - st.mtimeMs < 5 * 60 * 1000) {
+          detail = readFileSync(join(BACKUP_DIR, '.gitlist'), 'utf-8').trim()
+          if (detail) gitListCache = { at: Date.now(), detail }
+        }
+      } catch { /* 没有 .gitlist，走下面的兜底 */ }
+
+      const fresh = gitListCache && Date.now() - gitListCache.at < GIT_LIST_TTL_MS
+      if (detail) {
+        // 已有可用数据，直接用
+      } else if (fresh) {
+        detail = gitListCache!.detail
+      } else {
+        // 最多等 12 秒；宿主机触发器没赶上就用上一次的缓存，避免整页卡住
+        const out = await fireTrigger('git-list', undefined, undefined, 12_000)
+        if (out.ok) {
+          detail = out.detail || ''
+          gitListCache = { at: Date.now(), detail }
+        } else if (gitListCache) {
+          detail = gitListCache.detail
+        }
+      }
       const remote: Array<{ name: string; size: number; mtime: string; kind: string }> = []
-      if (out.ok && out.detail) {
-        for (const seg of out.detail.split(';')) {
+      if (detail) {
+        for (const seg of detail.split(';')) {
           const p = seg.trim().split('|')
           if (p.length < 3) continue
           const nm = basename(p[0])

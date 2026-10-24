@@ -486,7 +486,11 @@ async function saveConfig() {
     cfg.githubEnabled = !!form.githubEnabled && !!form.githubRepo
     cfg.autoBackup = !!form.autoBackup
     if (d.noChange) ok('没有检测到改动，无需保存')
-    else if (d.pending) ok('配置已保存，宿主机将在 1 分钟内应用（稍后刷新本页即可看到生效）')
+    else if (d.pending) {
+      ok('配置已保存，宿主机将在 1 分钟内应用')
+      // 后台自动回读一次，省得用户自己刷新
+      window.setTimeout(() => { loadConfig().catch(() => {}) }, 65_000)
+    }
     else ok('配置已保存' + (d.scheduleApplied ? '，自动备份时间已更新为 ' + d.scheduleApplied : ''))
     await loadConfig()
   } catch (e: any) {
@@ -593,7 +597,12 @@ async function runBackup() {
       } catch { /* 单次查询失败继续 */ }
     }
     if (!done) err('等待超时，请刷新查看备份列表或日志')
+    // 结果已经拿到 → 立刻恢复按钮状态，列表/日志在后台继续刷新
+    // （列表要等宿主机触发器，慢的话不能把按钮一直挂在「备份中」）
+    running.value = false
     await Promise.all([loadList(), loadLog()])
+    // 备份刚做完时宿主机的 .gitlist 可能还没刷新，稍后自动再拉一次
+    window.setTimeout(() => { loadList().catch(() => {}) }, 4000)
   } catch (e: any) {
     err('备份失败: ' + (e?.message || e))
     await loadLog().catch(() => {})

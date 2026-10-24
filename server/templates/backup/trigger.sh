@@ -26,6 +26,19 @@ mkdir -p "$DIR"
   echo "at=$(date '+%F %T')"
 } > "$DIR/.status" 2>/dev/null || true
 
+# 顺便把 GitHub 工作副本里的备份列表写出来，面板直接读文件即可，
+# 不用每次点「刷新」都等一轮触发器（之前列表要等 60 秒甚至超时）
+REPO_DIR_GIT=/root/incudal-git-backup
+gen_gitlist() {
+  [ -d "$REPO_DIR_GIT/.git" ] || return 0
+  {
+    ls -l --time-style=+%s "$REPO_DIR_GIT"/incudal-*.dump 2>/dev/null \
+      | awk '{print $NF"|"$5"|"$6}' | tr '\n' ';'
+    echo
+  } > "$DIR/.gitlist.tmp" 2>/dev/null && mv -f "$DIR/.gitlist.tmp" "$DIR/.gitlist" 2>/dev/null || true
+}
+gen_gitlist
+
 [ -f "$REQ" ] || exit 0
 
 # 抢占：把请求文件改名，避免同一请求被跑两次
@@ -199,3 +212,6 @@ case "$ACTION" in
     echo "$TS|1|未知动作" > "$RES"
     ;;
 esac
+
+# 动作执行完再刷一次列表，面板轮询完立刻就能看到新备份
+gen_gitlist
