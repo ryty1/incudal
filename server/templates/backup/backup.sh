@@ -88,6 +88,18 @@ if [ "$GITHUB_ENABLED" = "true" ] && [ -n "$GITHUB_REPO" ]; then
       rm -f "$old"
       git rm --quiet --cached --ignore-unmatch "$(basename "$old")" 2>/dev/null || true
     done
+    # 同一天只保留最新一份（KEEP_ONE_PER_DAY=false 可关掉）
+    if [ "${KEEP_ONE_PER_DAY:-true}" != "false" ]; then
+      _seen=""
+      while IFS= read -r _f; do
+        [ -n "$_f" ] || continue
+        _d=$(basename "$_f" | sed -E 's/^incudal-([0-9]{8})-.*/\1/')
+        case " $_seen " in
+          *" $_d "*) rm -f "$_f"; git rm --quiet --cached --ignore-unmatch "$(basename "$_f")" 2>/dev/null || true;;
+          *) _seen="$_seen $_d";;
+        esac
+      done < <(ls -1 "$REPO_DIR"/incudal-*.dump 2>/dev/null | sort -r)
+    fi
     # 历史压缩：提交数超过 20 就用 orphan 分支重建，把历史压成 1 个提交，
     # 否则就算删了文件，旧 blob 仍留在 git 历史里，仓库会无限膨胀
     CNT=$(git rev-list --count HEAD 2>/dev/null || echo 0)

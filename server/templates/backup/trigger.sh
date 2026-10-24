@@ -222,6 +222,19 @@ case "$ACTION" in
         git rm --quiet --cached --ignore-unmatch "$(basename "$f")" 2>/dev/null || true
         RDEL=$((RDEL+1))
       done < <(find "$REPO_DIR_GIT" -maxdepth 1 -type f -name 'incudal-*.dump' -mtime +${GITHUB_KEEP_DAYS:-7} 2>/dev/null)
+
+      # 同一天只保留最新一份（KEEP_ONE_PER_DAY=false 可关掉）
+      if [ "${KEEP_ONE_PER_DAY:-true}" != "false" ]; then
+        seen=""
+        while IFS= read -r f; do
+          [ -n "$f" ] || continue
+          d=$(basename "$f" | sed -E 's/^incudal-([0-9]{8})-.*/\1/')
+          case " $seen " in
+            *" $d "*) rm -f "$f"; git rm --quiet --cached --ignore-unmatch "$(basename "$f")" 2>/dev/null || true; RDEL=$((RDEL+1));;
+            *) seen="$seen $d";;
+          esac
+        done < <(ls -1 "$REPO_DIR_GIT"/incudal-*.dump 2>/dev/null | sort -r)
+      fi
       if [ "$RDEL" -gt 0 ]; then
         git add -A >/dev/null 2>&1
         git -c user.name="incudal-backup" -c user.email="backup@local" commit -q -m "prune: 删除 $RDEL 个超过 ${GITHUB_KEEP_DAYS:-7} 天的备份" >/dev/null 2>&1 || true
