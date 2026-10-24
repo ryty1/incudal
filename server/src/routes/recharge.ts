@@ -771,10 +771,16 @@ export default async function rechargeRoutes(app: FastifyInstance): Promise<void
           rate = fetched.rate
           rateSource = fetched.source
         }
-        const usdtAmount = cnyToUsdt(payableAmount, rate)
-        if (!(usdtAmount > 0)) {
+        const baseUsdt = cnyToUsdt(payableAmount, rate)
+        if (!(baseUsdt > 0)) {
           return reply.status(400).send({ error: 'USDT 金额换算失败' })
         }
+        // 加价百分比：在换算结果上叠加（4 = 用户多付 4%），比写死汇率更抗行情波动
+        const markupRaw = Number(providerConfig.usdt_markup_percent || 0)
+        const markup = Number.isFinite(markupRaw) ? Math.min(50, Math.max(0, markupRaw)) : 0
+        const usdtAmount = markup > 0
+          ? Math.max(0.01, Math.round(baseUsdt * (1 + markup / 100) * 100) / 100)
+          : baseUsdt
         cryptoInfo = { currency: 'USDT', amount: usdtAmount, rate, rateSource }
       }
 

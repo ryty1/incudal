@@ -159,6 +159,7 @@ function getDefaultConfig(type: string, version?: string): Record<string, unknow
           key: '',
           currency: 'CNY',
           usdt_rate: '',
+          usdt_markup_percent: 0,
           methodFees: {}
         }
       }
@@ -170,6 +171,7 @@ function getDefaultConfig(type: string, version?: string): Record<string, unknow
         merchant_private_key: '',
         currency: 'CNY',
         usdt_rate: '',
+        usdt_markup_percent: 0,
         methodFees: {}
       }
     case 'heleket':
@@ -574,6 +576,19 @@ function togglePaymentMethod(method: string) {
                 </select>
                 <p class="text-xs text-themed-muted mt-1">
                   选 USDT 时，下单金额 = 人民币 / 汇率，支付方式固定为 usdt。
+                </p>
+              </div>
+              <div v-if="String((formData.config as any).currency || 'CNY').toUpperCase() === 'USDT'">
+                <label class="label">加价百分比（%）</label>
+                <input
+                  v-model="(formData.config as any).usdt_markup_percent"
+                  type="text"
+                  class="input w-full"
+                  placeholder="例如 4 = 用户多付 4%"
+                />
+                <p class="text-xs text-themed-muted mt-1">
+                  在实时汇率换算结果上叠加。设 4 时：市价 6.67 相当于按 6.41 折算，用户多付 4%，你多收 4%。
+                  填 0 表示按市价原价收。
                 </p>
               </div>
               <div v-if="String((formData.config as any).currency || 'CNY').toUpperCase() === 'USDT'">
