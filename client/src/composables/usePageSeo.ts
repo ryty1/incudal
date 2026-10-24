@@ -11,7 +11,7 @@ interface SeoOptions {
   image?: string
 }
 
-const defaultTitle = typeof document !== 'undefined' ? document.title : 'Incudal'
+const defaultTitle = typeof document !== 'undefined' ? document.title : '蛋蛋云 · 公益 NAT 云主机'
 const defaultDescription = typeof document !== 'undefined'
   ? (document.querySelector('meta[name="description"]') as HTMLMetaElement | null)?.content || ''
   : ''
@@ -68,7 +68,7 @@ function upsertCanonical(href: string): void {
 function applySeo(options: SeoOptions): void {
   const configStore = useConfigStore()
   const brandName = configStore.brandName?.trim() || 'Incudal'
-  const image = toAbsoluteUrl(options.image || configStore.brandLogoUrl?.trim() || '/incudal_logo_v3.webp')
+  const image = toAbsoluteUrl(options.image || configStore.brandLogoUrl?.trim() || '/logo-dandan-512.png')
   const canonical = options.canonical || window.location.href
   const robots = options.robots || defaultRobots
 
@@ -100,7 +100,7 @@ function restoreDefaults(): void {
   const configStore = useConfigStore()
   const brandName = configStore.brandName?.trim() || 'Incudal'
   const brandSubtitle = configStore.brandSubtitle?.trim() || '基于 Incus 的低价 NAT VPS'
-  const brandLogoUrl = toAbsoluteUrl(configStore.brandLogoUrl?.trim() || '/incudal_logo_v3.webp')
+  const brandLogoUrl = toAbsoluteUrl(configStore.brandLogoUrl?.trim() || '/logo-dandan-512.png')
   const title = defaultTitle.replace(/Incudal/g, brandName)
   const description = defaultDescription || brandSubtitle
 
