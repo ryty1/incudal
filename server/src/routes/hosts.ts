@@ -1114,25 +1114,27 @@ export default async function hostRoutes(fastify: FastifyInstance) {
 
   // 节点内核/内存调优脚本（install.sh 第 ⑨ 步拉取；无需鉴权，幂等脚本）
   // 之前这个文件只存在于宿主机 /var/www/html，仓库里没有 → 新装环境 404，第 ⑨ 步永远跳过
-  fastify.get('/incus-tune.sh', async (request, reply) => {
+  for (const tuneScript of ['incus-tune.sh', 'incus-tune-all.sh']) {
+  fastify.get(`/${tuneScript}`, async (request, reply) => {
     try {
-      const scriptPath = join(__dirname, '../../templates/incus-tune.sh')
+      const scriptPath = join(__dirname, `../../templates/${tuneScript}`)
       let script: string
       try {
         script = readFileSync(scriptPath, 'utf-8')
       } catch (err) {
-        request.log.error(err, 'Failed to read incus-tune.sh')
-        return reply.code(500).send('# Error: incus-tune.sh not found')
+        request.log.error(err, 'Failed to read ' + tuneScript)
+        return reply.code(500).send('# Error: ' + tuneScript + ' not found')
       }
       return reply
         .header('Content-Type', 'text/plain; charset=utf-8')
         .header('Cache-Control', 'no-store')
         .send(script)
     } catch (err) {
-      request.log.error(err, 'Failed to serve incus-tune.sh')
+      request.log.error(err, 'Failed to serve ' + tuneScript)
       return reply.code(500).send('# Error: Internal server error')
     }
   })
+  }
 
   // 通用安装脚本下载接口（无需鉴权，直接返回脚本模板，让用户在执行时输入 token）
   fastify.get('/install.sh', async (request, reply) => {
