@@ -12,12 +12,34 @@
  */
 import type { FastifyInstance } from 'fastify'
 import { readFileSync, writeFileSync, existsSync, statSync, readdirSync, unlinkSync, createReadStream, accessSync, constants } from 'fs'
-import { join, basename } from 'path'
+import { join, basename, dirname } from 'path'
 import { apiError, ErrorCode } from '../lib/errors.js'
 import { logAdminAction } from '../lib/security.js'
 
 const BACKUP_DIR = existsSync('/backup') ? '/backup' : '/srv/incudal-backups'
 const CONF = existsSync('/backup/incudal-backup.conf') ? '/backup/incudal-backup.conf' : '/srv/incudal-backup.conf'
+
+/**
+ * 配置文件是否可用于写入。
+ * docker 把宿主机上不存在的文件 bind-mount 成目录时，写会失败（EISDIR），
+ * 这种情况要给出人话提示，而不是抛 500。
+ */
+function confWriteError(): string | null {
+  try {
+    const st = statSync(CONF)
+    if (st.isDirectory()) {
+      return `备份配置文件路径是个目录（${CONF}）。宿主机上 /srv/incudal-backup.conf 不存在，请先 touch 一个空文件再重启面板`
+    }
+  } catch {
+    // 文件不存在：只要父目录可写就能新建
+    try {
+      accessSync(dirname(CONF), constants.W_OK)
+    } catch {
+      return `备份配置目录不可写（${dirname(CONF)}），请检查容器挂载权限`
+    }
+  }
+  return null
+}
 
 /** 备份文件名白名单：只允许 incudal-*.dump / incudal-db-*.sql.gz / pre-import-*.dump */
 function safeBackupName(name: string): string | null {
@@ -63,7 +85,7 @@ function writeConf(patch: Record<string, string>): void {
  * 写一个请求文件，由宿主机 cron 每分钟跑的 incudal-backup-trigger.sh 真正执行。
  * 这里：写请求 → 轮询结果 → 返回。
  */
-async function fireTrigger(action: 'run' | 'import' | 'install-rclone' | 'gen-ssh-key' | 'set-schedule' | 'verify-archive' | 'set-auto' | 'git-list' | 'clear-log' | 'git-get' | 'git-del', name?: string, mode?: string): Promise<{ ok: boolean; code: number; detail: string; error?: string }> {
+async function fireTrigger(action: 'run' | 'import' | 'install-rclone' | 'gen-ssh-key' | 'set-schedule' | 'verify-archive' | 'set-auto' | 'git-list' | 'clear-log' | 'git-get' | 'git-del', name?: string, mode?: string, maxWaitMs = 10 * 60 * 1000): Promise<{ ok: boolean; code: number; detail: string; error?: string }> {
   const reqFile = join(BACKUP_DIR, '.request')
   const resFile = join(BACKUP_DIR, '.result')
   try {
@@ -83,7 +105,8 @@ async function fireTrigger(action: 'run' | 'import' | 'install-rclone' | 'gen-ss
   } catch (e) {
     return { ok: false, code: 1, detail: '', error: '无法写请求文件（备份目录不可写？）: ' + String((e as Error).message) }
   }
-  for (let i = 0; i < 200; i++) {          // 最多等 10 分钟
+  const maxTries = Math.max(1, Math.ceil(maxWaitMs / 3000))
+  for (let i = 0; i < maxTries; i++) {
     await new Promise((r) => setTimeout(r, 3000))
     try {
       const line = readFileSync(resFile, 'utf-8').split('\n')[0]
@@ -120,7 +143,7 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
       keepDays: Number(c.KEEP_DAYS || 14),
       backupTime: c.BACKUP_TIME || '03:10',
       backupTz: c.BACKUP_TZ || 'Asia/Shanghai',
-      autoBackup: (c.AUTO_BACKUP || 'on') !== 'off',
+      autoBackup: (c.AUTO_BACKUP || 'off') === 'on',
       // 面板在容器里，看不到宿主机的脚本文件；真正的可用性判据是
       // 备份目录可写（能写 .request 让宿主机触发器接手）。
       scriptsReady: (() => { try { return existsSync(BACKUP_DIR) && accessSync(BACKUP_DIR, constants.W_OK) === undefined } catch { return false } })(),
@@ -196,24 +219,34 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
       }
       if (!Object.keys(patch).length) return { ok: true, changed: 0, noChange: true }
 
-      writeConf(patch)
+      const werr = confWriteError()
+      if (werr) return reply.code(400).send(apiError(ErrorCode.VALIDATION_ERROR, werr))
+
+      try {
+        writeConf(patch)
+      } catch (e) {
+        return reply.code(400).send(apiError(ErrorCode.VALIDATION_ERROR, '写入备份配置失败: ' + String((e as Error).message)))
+      }
       await logAdminAction(request.user.id, 'backup.config.update', { resourceType: 'backup_config', newValue: { keys: Object.keys(patch) } }).catch(() => {})
 
       // 时间/时区变了 → 立刻重写宿主机 crontab
+      // 宿主机触发器每分钟跑一次，这里最多等 25 秒；超时不算保存失败
+      const TRIGGER_WAIT_MS = 25_000
+      const warnings: string[] = []
       let scheduleApplied: string | null = null
       if (patch.BACKUP_TIME !== undefined || patch.BACKUP_TZ !== undefined) {
         const c = readConf()
-        const out = await fireTrigger('set-schedule', c.BACKUP_TIME || '03:10', c.BACKUP_TZ || 'Asia/Shanghai')
+        const out = await fireTrigger('set-schedule', c.BACKUP_TIME || '03:10', c.BACKUP_TZ || 'Asia/Shanghai', TRIGGER_WAIT_MS)
         if (out.ok) scheduleApplied = (c.BACKUP_TIME || '03:10') + ' (' + (c.BACKUP_TZ || 'Asia/Shanghai') + ')'
-        else return reply.code(500).send({ ok: false, error: '配置已保存，但 crontab 更新失败: ' + (out.error || out.detail) })
+        else warnings.push('配置已保存，但宿主机定时任务未确认更新（' + (out.error || out.detail || '宿主机触发器无响应') + '）')
       }
       let autoApplied: string | null = null
       if (autoChange !== null) {
-        const out = await fireTrigger('set-auto', autoChange ? 'on' : 'off')
+        const out = await fireTrigger('set-auto', autoChange ? 'on' : 'off', undefined, TRIGGER_WAIT_MS)
         if (out.ok) autoApplied = autoChange ? 'on' : 'off'
-        else return reply.code(500).send({ ok: false, error: '配置已保存，但 crontab 更新失败: ' + (out.error || out.detail) })
+        else warnings.push('配置已保存，但宿主机定时任务未确认更新（' + (out.error || out.detail || '宿主机触发器无响应') + '）')
       }
-      return { ok: true, changed: Object.keys(patch).length, scheduleApplied, autoApplied }
+      return { ok: true, changed: Object.keys(patch).length, scheduleApplied, autoApplied, warnings }
     }
   )
 

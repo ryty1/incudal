@@ -127,7 +127,7 @@ export async function initSystemConfig(): Promise<void> {
         { key: 'ticket_image_lsky_target_id', value: '', type: 'string', label: '策略/存储 ID', description: 'v1 填 strategy_id，v2 填 storage_id，可留空使用默认策略' },
         // 机器人桥接（Bot Bridge）：外部机器人访问 /api/bot/* 的共享密钥
         { key: 'bot_bridge_token', value: '', type: 'secret', label: '机器人桥接 Token', description: '外部机器人（tg-antispam 等）访问 /api/bot/* 的共享密钥；留空 = 该组接口整体返回 404' },
-        { key: 'guard_enabled', value: '1', type: 'boolean', label: '守护开关', description: '是否启用「不在群成员」守护同步；关闭后机器人不再做成员巡检' },
+        { key: 'guard_enabled', value: '0', type: 'boolean', label: '守护开关', description: '是否启用「不在群成员」守护同步；关闭后机器人不再做成员巡检' },
         { key: 'guard_interval_minutes', value: '15', type: 'number', label: '守护周期(分钟)', description: '机器人多久巡检一次群成员，1~1440 分钟' },
         // TGID 绑定（独立于「TG 设置」卡片里的面板机器人配置）
         { key: 'tg_bind_enabled', value: '0', type: 'boolean', label: 'TGID 绑定开关', description: '是否开放「用户填写 TGID」的绑定入口' },

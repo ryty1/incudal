@@ -79,15 +79,16 @@ export async function getGuardSettings(): Promise<{
   expiryReminderDays: number
   expiryReminderEnabled: boolean
 }> {
-  let enabled = true
+  // 新装默认全关：守护同步、到期提醒都要管理员显式打开
+  let enabled = false
   let intervalMinutes = 15
   let expiryReminderDays = 5
-  let expiryReminderEnabled = true
+  let expiryReminderEnabled = false
   try {
     const raw = await getSystemConfig(GUARD_ENABLED_KEY)
     const v = String(raw ?? '').trim().toLowerCase()
     if (v !== '') enabled = v === '1' || v === 'true'
-  } catch { /* 读失败按「开」兜底，避免误关守护 */ }
+  } catch { /* 读失败按「关」兜底，新装默认关闭 */ }
   try {
     const n = Math.floor(Number(await getSystemConfig(GUARD_INTERVAL_KEY)))
     // 上限 30 天（43200 分钟）——支持「天」为单位的守护周期
@@ -101,9 +102,9 @@ export async function getGuardSettings(): Promise<{
   try {
     const raw = await getSystemConfig(EXPIRY_REMINDER_ENABLED_KEY)
     const v = String(raw ?? '').trim().toLowerCase()
-    // 读不到（老库没这个键）按「开」兜底，保持升级前的行为
+    // 读不到（老库没这个键）按「关」兜底，新装默认关闭
     if (v !== '') expiryReminderEnabled = v === '1' || v === 'true'
-  } catch { /* 读失败按开兜底 */ }
+  } catch { /* 读失败按关兜底 */ }
   return { enabled, intervalMinutes, expiryReminderDays, expiryReminderEnabled }
 }
 

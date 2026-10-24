@@ -457,6 +457,7 @@ async function saveConfig() {
     cfg.githubEnabled = !!form.githubEnabled && !!form.githubRepo
     cfg.autoBackup = !!form.autoBackup
     if (d.noChange) ok('没有检测到改动，无需保存')
+    else if (Array.isArray(d.warnings) && d.warnings.length) ok('配置已保存；' + d.warnings.join('；'))
     else ok('配置已保存' + (d.scheduleApplied ? '，自动备份时间已更新为 ' + d.scheduleApplied : ''))
     await loadConfig()
   } catch (e: any) {
