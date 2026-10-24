@@ -8,7 +8,7 @@
 # ============================================================
 set -uo pipefail
 
-APP_DIR="/home/docker/incudal"
+APP_DIR="${APP_DIR:-/home/docker/incudal}"
 BACKUP_DIR="/srv/incudal-backups"
 CONF="/srv/incudal-backup.conf"
 KEEP_DAYS=14
@@ -23,6 +23,13 @@ RCLONE_REMOTE=""
 RCLONE_KEEP=30
 
 [ -f "$CONF" ] && . "$CONF"
+
+# conf 没指定 APP_DIR 且默认路径不存在 → 自动探测常见安装位置
+if [ ! -d "$APP_DIR" ]; then
+  for d in /home/docker/incudal /root/incudal /opt/incudal /srv/incudal; do
+    if [ -f "$d/docker-compose.yml" ]; then APP_DIR="$d"; break; fi
+  done
+fi
 
 exec 9>"$LOCK"
 flock -n 9 || { echo "[$(date '+%F %T')] 已有备份在跑，跳过" >> "$LOG"; exit 0; }

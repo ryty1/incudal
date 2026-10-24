@@ -15,6 +15,7 @@
 set -uo pipefail
 
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../server/templates/backup" 2>/dev/null && pwd)"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)"
 BIN_DIR="/usr/local/bin"
 BACKUP_DIR="/srv/incudal-backups"
 CONF="/srv/incudal-backup.conf"
@@ -44,7 +45,13 @@ install -m 0755 "$SRC_DIR/trigger.sh" "$BIN_DIR/incudal-backup-trigger.sh" || { 
 ok "脚本已安装到 $BIN_DIR"
 
 mkdir -p "$BACKUP_DIR"
-chmod 755 "$BACKUP_DIR"
+
+# 面板容器内运行用户是 uid 1001 / gid 65533；目录和配置文件必须归它所有，
+# 否则面板保存配置会 EACCES（触发器以 root 运行，不受影响）。
+BACKUP_UID="${BACKUP_UID:-1001}"
+BACKUP_GID="${BACKUP_GID:-65533}"
+chown "$BACKUP_UID:$BACKUP_GID" "$BACKUP_DIR" 2>/dev/null || warn "chown $BACKUP_DIR 失败（用户不存在？）"
+chmod 750 "$BACKUP_DIR"
 
 # 配置文件：不存在才创建，且默认 AUTO_BACKUP=off
 # 特例：如果 docker 先把 bind mount 的目标建成了目录（容器在文件存在前启动过），
@@ -80,10 +87,18 @@ BACKUP_TIME="03:10"
 BACKUP_TZ="Asia/Shanghai"
 AUTO_BACKUP="off"
 CONFEOF
-  ok "已生成 $CONF（自动备份默认关闭）"
+  # 项目目录单独写入（heredoc 带引号不会展开变量）
+  printf '\n# 面板项目目录（含 docker-compose.yml），装在不同路径时改这里\nAPP_DIR="%s"\n' "$PROJECT_DIR" >> "$CONF"
+  chown "$BACKUP_UID:$BACKUP_GID" "$CONF" 2>/dev/null || true
+  chmod 640 "$CONF"
+  ok "已生成 $CONF（自动备份默认关闭，APP_DIR=$PROJECT_DIR）"
 else
   info "$CONF 已存在，未覆盖"
   # 老配置文件补上 AUTO_BACKUP=off，避免「没配置却显示已启用」
+  if ! grep -q '^APP_DIR=' "$CONF"; then
+    printf '\n# 面板项目目录\nAPP_DIR="%s"\n' "$PROJECT_DIR" >> "$CONF"
+    ok "已为老配置补上 APP_DIR=$PROJECT_DIR"
+  fi
   if ! grep -q '^AUTO_BACKUP=' "$CONF"; then
     printf '\n# 自动备份默认关闭\nBACKUP_TIME="03:10"\nBACKUP_TZ="Asia/Shanghai"\nAUTO_BACKUP="off"\n' >> "$CONF"
     ok "已为老配置补上 AUTO_BACKUP=off"

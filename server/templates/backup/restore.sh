@@ -18,12 +18,19 @@
 # ============================================================
 set -uo pipefail
 
-APP_DIR="/home/docker/incudal"
+APP_DIR="${APP_DIR:-/home/docker/incudal}"
 BACKUP_DIR="/srv/incudal-backups"
 CONF="/srv/incudal-backup.conf"
 GITHUB_ENABLED="false"; GITHUB_REPO=""; GITHUB_BRANCH="main"
 RCLONE_ENABLED="false"; RCLONE_REMOTE=""
 [ -f "$CONF" ] && . "$CONF"
+
+# conf 没指定 APP_DIR 且默认路径不存在 → 自动探测常见安装位置
+if [ ! -d "$APP_DIR" ]; then
+  for d in /home/docker/incudal /root/incudal /opt/incudal /srv/incudal; do
+    if [ -f "$d/docker-compose.yml" ]; then APP_DIR="$d"; break; fi
+  done
+fi
 
 CMD="${1:-list}"
 

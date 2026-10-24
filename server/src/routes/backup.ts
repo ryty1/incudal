@@ -274,23 +274,24 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
       await logAdminAction(request.user.id, 'backup.config.update', { resourceType: 'backup_config', newValue: { keys: Object.keys(patch) } }).catch(() => {})
 
       // 时间/时区变了 → 立刻重写宿主机 crontab
-      // 宿主机触发器每分钟跑一次，这里最多等 25 秒；超时不算保存失败
-      const TRIGGER_WAIT_MS = 25_000
-      const warnings: string[] = []
+      // 宿主机触发器 cron 是每分钟一次，等待窗口必须 > 60 秒，
+      // 否则明明执行成功了也会误报「未确认更新」。
+      const TRIGGER_WAIT_MS = 80_000
       let scheduleApplied: string | null = null
+      let pending = false
       if (patch.BACKUP_TIME !== undefined || patch.BACKUP_TZ !== undefined) {
         const c = readConf()
         const out = await fireTrigger('set-schedule', c.BACKUP_TIME || '03:10', c.BACKUP_TZ || 'Asia/Shanghai', TRIGGER_WAIT_MS)
         if (out.ok) scheduleApplied = (c.BACKUP_TIME || '03:10') + ' (' + (c.BACKUP_TZ || 'Asia/Shanghai') + ')'
-        else warnings.push('配置已保存，但宿主机定时任务未确认更新（' + (out.error || out.detail || '宿主机触发器无响应') + '）')
+        else pending = true
       }
       let autoApplied: string | null = null
       if (autoChange !== null) {
         const out = await fireTrigger('set-auto', autoChange ? 'on' : 'off', undefined, TRIGGER_WAIT_MS)
         if (out.ok) autoApplied = autoChange ? 'on' : 'off'
-        else warnings.push('配置已保存，但宿主机定时任务未确认更新（' + (out.error || out.detail || '宿主机触发器无响应') + '）')
+        else pending = true
       }
-      return { ok: true, changed: Object.keys(patch).length, scheduleApplied, autoApplied, warnings }
+      return { ok: true, changed: Object.keys(patch).length, scheduleApplied, autoApplied, pending }
     }
   )
 

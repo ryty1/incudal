@@ -4,6 +4,16 @@
 # 请求文件；这个脚本每分钟被 cron 调一次，看到请求就执行真正的备份/导入。
 set -uo pipefail
 DIR=/srv/incudal-backups
+CONF=/srv/incudal-backup.conf
+
+# 项目目录：优先用 conf 里的 APP_DIR，没写就自动探测（不同机器装在不同路径）
+APP_DIR="${APP_DIR:-/home/docker/incudal}"
+[ -f "$CONF" ] && . "$CONF" 2>/dev/null || true
+if [ ! -d "$APP_DIR" ]; then
+  for d in /home/docker/incudal /root/incudal /opt/incudal /srv/incudal; do
+    if [ -f "$d/docker-compose.yml" ]; then APP_DIR="$d"; break; fi
+  done
+fi
 REQ="$DIR/.request"
 RES="$DIR/.result"
 mkdir -p "$DIR"
@@ -109,9 +119,9 @@ case "$ACTION" in
       else
         echo "$TS|1|gzip 能解开但里面没有 CREATE TABLE，不是数据库备份" > "$RES"
       fi
-    elif docker compose -f /home/docker/incudal/docker-compose.yml cp "$DIR/.upload_tmp" db:/tmp/_up.dump >/dev/null 2>&1 \
-       && docker compose -f /home/docker/incudal/docker-compose.yml exec -T db pg_restore --list /tmp/_up.dump >/dev/null 2>&1; then
-      docker compose -f /home/docker/incudal/docker-compose.yml exec -T db rm -f /tmp/_up.dump >/dev/null 2>&1 || true
+    elif docker compose -f "$APP_DIR/docker-compose.yml" cp "$DIR/.upload_tmp" db:/tmp/_up.dump >/dev/null 2>&1 \
+       && docker compose -f "$APP_DIR/docker-compose.yml" exec -T db pg_restore --list /tmp/_up.dump >/dev/null 2>&1; then
+      docker compose -f "$APP_DIR/docker-compose.yml" exec -T db rm -f /tmp/_up.dump >/dev/null 2>&1 || true
       echo "$TS|0|pg_dump 归档有效" > "$RES"
     else
       echo "$TS|1|既不是 gzip 也不是 pg_dump 归档" > "$RES"
