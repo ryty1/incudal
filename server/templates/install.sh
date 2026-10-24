@@ -3475,7 +3475,14 @@ main() {
 if [ -n "${PANEL_URL:-}" ]; then
     echo "---- ⑨ 系统/内核调优（最长 120 秒）----"
     # 先落盘再执行：管道喂给 bash 时脚本取不到自身路径，会在中途卡住（踩过）。
+    # 先试根路径（老部署由 nginx 静态托管），404 再退回面板路由 /api/hosts/incus-tune.sh
+    _tune_ok=0
     if curl -fsSL --max-time 60 --connect-timeout 15 "${PANEL_URL}/incus-tune.sh" -o /tmp/incus-tune.sh 2>/dev/null && [ -s /tmp/incus-tune.sh ]; then
+        _tune_ok=1
+    elif curl -fsSL --max-time 60 --connect-timeout 15 "${PANEL_URL}/api/hosts/incus-tune.sh" -o /tmp/incus-tune.sh 2>/dev/null && [ -s /tmp/incus-tune.sh ]; then
+        _tune_ok=1
+    fi
+    if [ "$_tune_ok" = "1" ]; then
         chmod +x /tmp/incus-tune.sh
         # incus-tune.sh 里用了 info/warn 但没定义它们（设计成被 source 的），
         # 独立运行会在最后几行 command not found 让退出码变成 127。这里补上定义。
