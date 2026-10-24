@@ -85,6 +85,26 @@ function writeConf(patch: Record<string, string>): void {
  * 写一个请求文件，由宿主机 cron 每分钟跑的 incudal-backup-trigger.sh 真正执行。
  * 这里：写请求 → 轮询结果 → 返回。
  */
+/** 只把请求写到宿主机，不等待结果（长任务用这个，避免 HTTP 长请求被网关掐断） */
+function queueTrigger(action: string, name?: string, mode?: string): { ok: boolean; error?: string } {
+  const reqFile = join(BACKUP_DIR, '.request')
+  const resFile = join(BACKUP_DIR, '.result')
+  try {
+    try { unlinkSync(resFile) } catch { /* 无旧结果 */ }
+    const payload = action === 'run' ? 'run\n'
+      : action === 'set-schedule' ? `set-schedule\n${name}\n${mode}\n`
+      : action === 'set-auto' ? `set-auto\n${name}\n`
+      : action === 'git-get' ? `git-get\n${name}\n`
+      : action === 'git-del' ? `git-del\n${name}\n`
+      : action === 'import' ? `import\n${name}\n${mode}\n`
+      : `${action}\n`
+    writeFileSync(reqFile, payload, 'utf-8')
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: '无法写请求文件（备份目录不可写？）: ' + String((e as Error).message) }
+  }
+}
+
 async function fireTrigger(action: 'run' | 'import' | 'install-rclone' | 'gen-ssh-key' | 'set-schedule' | 'verify-archive' | 'set-auto' | 'git-list' | 'clear-log' | 'git-get' | 'git-del', name?: string, mode?: string, maxWaitMs = 10 * 60 * 1000): Promise<{ ok: boolean; code: number; detail: string; error?: string }> {
   const reqFile = join(BACKUP_DIR, '.request')
   const resFile = join(BACKUP_DIR, '.result')
@@ -171,6 +191,8 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
       rcloneRemote: c.RCLONE_REMOTE || '',
       rcloneKeep: Number(c.RCLONE_KEEP || 30),
       keepDays: Number(c.KEEP_DAYS || 14),
+      // GitHub 私库保留天数：之前只写在宿主机 conf 里（默认 7），后台看不到也改不了
+      githubKeepDays: Number(c.GITHUB_KEEP_DAYS || 7),
       backupTime: c.BACKUP_TIME || '03:10',
       backupTz: c.BACKUP_TZ || 'Asia/Shanghai',
       // 配置里写着 on，但宿主机没脚本/触发器没跑 → 实际不会备份，按关闭显示
@@ -260,6 +282,11 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
         const n = Number(b.keepDays)
         if (!Number.isInteger(n) || n < 1 || n > 3650) return reply.code(400).send(apiError(ErrorCode.VALIDATION_ERROR, '本地保留天数需为 1-3650 的整数'))
         patch.KEEP_DAYS = String(n)
+      }
+      if (b.githubKeepDays !== undefined) {
+        const n = Number(b.githubKeepDays)
+        if (!Number.isInteger(n) || n < 1 || n > 3650) return reply.code(400).send(apiError(ErrorCode.VALIDATION_ERROR, 'GitHub 私库保留天数需为 1-3650 的整数'))
+        patch.GITHUB_KEEP_DAYS = String(n)
       }
       if (!Object.keys(patch).length) return { ok: true, changed: 0, noChange: true }
 
@@ -409,15 +436,31 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
   })
 
   // ---------------- 立即备份（走宿主机触发器）----------------
+  // 立即备份：只下发请求，立即返回；前端轮询 /admin/backup/run/status 拿结果。
+  // 之前是同步等宿主机执行完（最长 10 分钟），网关一超时就变成「一直显示备份中」。
   fastify.post('/admin/backup/run', { onRequest: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
     const host = hostReadiness()
     if (!host.scripts || !host.trigger) {
       return reply.code(400).send(apiError(ErrorCode.VALIDATION_ERROR, '宿主机备份环境未就绪：' + host.reason))
     }
-    const out = await fireTrigger('run')
-    if (!out.ok) return reply.code(500).send({ ok: false, error: out.error, log: out.detail })
+    const queued = queueTrigger('run')
+    if (!queued.ok) return reply.code(500).send({ ok: false, error: queued.error })
     await logAdminAction(request.user.id, 'backup.run', { resourceType: 'backup' }).catch(() => {})
-    return { ok: true, exitCode: out.code, log: out.detail }
+    return { ok: true, started: true, message: '已提交，宿主机正在执行（最多约 1 分钟）' }
+  })
+
+  // 备份执行状态（轮询用；读到结果后清掉 .result）
+  fastify.get('/admin/backup/run/status', { onRequest: [fastify.authenticate, fastify.requireAdmin] }, async () => {
+    const resFile = join(BACKUP_DIR, '.result')
+    try {
+      const line = readFileSync(resFile, 'utf-8').split('\n')[0]
+      const parts = line.split('|')
+      const code = Number(parts[1] ?? 1)
+      try { unlinkSync(resFile) } catch { /* ignore */ }
+      return { done: true, ok: code === 0, detail: parts.slice(2).join('|') }
+    } catch {
+      return { done: false }
+    }
   })
 
   // ---------------- 下载 ----------------

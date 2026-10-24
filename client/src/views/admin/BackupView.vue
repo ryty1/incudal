@@ -34,6 +34,7 @@
         <div class="bk-stat"><span class="bk-k">备份数量</span><span class="bk-v">{{ items.length }} 份</span></div>
         <div class="bk-stat"><span class="bk-k">占用空间</span><span class="bk-v">{{ fmtSize(totalSize) }}</span></div>
         <div class="bk-stat"><span class="bk-k">本地保留</span><span class="bk-v">{{ cfg.keepDays }} 天</span></div>
+        <div v-if="cfg.githubEnabled" class="bk-stat"><span class="bk-k">私库保留</span><span class="bk-v">{{ cfg.githubKeepDays }} 天</span></div>
         <div class="bk-stat">
           <span class="bk-k">备份脚本</span>
           <span class="bk-v" :class="cfg.scriptsReady ? 'ok' : 'bad'">{{ cfg.scriptsReady ? '就绪' : '缺失' }}</span>
@@ -134,6 +135,15 @@
           <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">本地保留（天）</label>
           <input class="input w-full" type="number" min="1" max="3650" v-model.number="form.keepDays" />
         </div>
+        <div v-if="form.githubEnabled" class="w-[150px]">
+          <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1.5">私库保留（天）</label>
+          <input class="input w-full" type="number" min="1" max="3650" v-model.number="form.githubKeepDays" />
+        </div>
+
+        <p v-if="form.githubEnabled" class="w-full text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
+          启用 GitHub 私库时，本地副本在推送成功后就删掉（本地保留天数此时不起作用）；
+          真正生效的是<strong>私库保留天数</strong> —— 超过这个天数的备份会在下一次备份时从仓库里删除并推送。
+        </p>
 
         <div class="ml-auto">
           <button class="btn btn-primary" :disabled="saving" @click="saveConfig">
@@ -293,6 +303,7 @@ const msg = reactive<{ text: string; type: 'ok' | 'error' }>({ text: '', type: '
 
 const cfg = reactive({
   keepDays: 14,
+  githubKeepDays: 7,
   scriptsReady: false,
   sshKeyReady: false,
   githubEnabled: false,
@@ -309,7 +320,8 @@ const form = reactive({
   githubEnabled: false,
   githubRepo: '',
   githubBranch: 'main',
-  keepDays: 14
+  keepDays: 14,
+  githubKeepDays: 7
 })
 
 const importTarget = ref<BackupItem | null>(null)
@@ -397,6 +409,8 @@ async function loadConfig() {
   form.githubRepo = c.githubRepo || ''
   form.githubBranch = c.githubBranch || 'main'
   form.keepDays = Number(c.keepDays ?? 14)
+  cfg.githubKeepDays = Number(c.githubKeepDays ?? 7)
+  form.githubKeepDays = Number(c.githubKeepDays ?? 7)
   form.backupTime = c.backupTime || '03:10'
   form.backupTz = c.backupTz || 'Asia/Shanghai'
 }
@@ -463,6 +477,7 @@ async function saveConfig() {
         githubRepo: form.githubRepo,
         githubBranch: form.githubBranch,
         keepDays: form.keepDays,
+        githubKeepDays: form.githubKeepDays,
         backupTime: form.backupTime,
         backupTz: form.backupTz,
         autoBackup: form.autoBackup
@@ -558,7 +573,26 @@ async function runBackup() {
   msg.text = ''
   try {
     const d = await req('/admin/backup/run', { method: 'POST', body: '{}' })
-    ok('备份完成' + (d.log ? '：' + String(d.log).split('\n').slice(-1)[0] : ''))
+    if (!d.started) throw new Error('下发失败')
+
+    // 宿主机是每分钟一次的 cron，请求立即返回；这里轮询执行结果，避免「一直显示备份中」
+    let done = false
+    for (let i = 0; i < 200; i++) {          // 最多等 10 分钟
+      await new Promise((r) => setTimeout(r, 3000))
+      try {
+        const st = await req('/admin/backup/run/status')
+        if (st.done) {
+          done = true
+          const tail = st.detail ? String(st.detail).split('\n').filter(Boolean).slice(-1)[0] : ''
+          if (st.ok) ok('备份完成' + (tail ? '：' + tail : ''))
+          else err('备份失败' + (tail ? '：' + tail : ''))
+          break
+        }
+        msg.type = 'ok'
+        msg.text = '正在备份… 已等待 ' + ((i + 1) * 3) + ' 秒'
+      } catch { /* 单次查询失败继续 */ }
+    }
+    if (!done) err('等待超时，请刷新查看备份列表或日志')
     await Promise.all([loadList(), loadLog()])
   } catch (e: any) {
     err('备份失败: ' + (e?.message || e))
