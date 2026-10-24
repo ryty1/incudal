@@ -88,6 +88,11 @@ function writeConf(patch: Record<string, string>): void {
 async function fireTrigger(action: 'run' | 'import' | 'install-rclone' | 'gen-ssh-key' | 'set-schedule' | 'verify-archive' | 'set-auto' | 'git-list' | 'clear-log' | 'git-get' | 'git-del', name?: string, mode?: string, maxWaitMs = 10 * 60 * 1000): Promise<{ ok: boolean; code: number; detail: string; error?: string }> {
   const reqFile = join(BACKUP_DIR, '.request')
   const resFile = join(BACKUP_DIR, '.result')
+  // 触发器没在跑（.status 不新鲜）→ 直接返回，不写请求、不空等
+  const host = hostReadiness()
+  if (!host.trigger) {
+    return { ok: false, code: 1, detail: '', error: host.reason || '宿主机触发器未运行' }
+  }
   try {
     try { unlinkSync(resFile) } catch { /* 无旧结果 */ }
     const payload = action === 'run' ? 'run\n'
@@ -128,10 +133,35 @@ function readHostStatus(): { rclone: boolean; scripts: boolean; sshkey: boolean;
   } catch { return { rclone: false, scripts: false, sshkey: false, at: '' } }
 }
 
+/**
+ * 宿主机侧是否真的可用。
+ * 面板在容器里看不到 /usr/local/bin/incudal-*.sh，唯一可信的判据是
+ * 宿主机触发器每分钟写的 .status：文件存在且新鲜 = 触发器在跑；
+ * 里面的 scripts=yes = 备份脚本已安装。
+ */
+function hostReadiness(): { scripts: boolean; trigger: boolean; ageSec: number | null; reason: string } {
+  const st = readHostStatus()
+  let ageSec: number | null = null
+  try {
+    ageSec = Math.round((Date.now() - statSync(join(BACKUP_DIR, '.status')).mtimeMs) / 1000)
+  } catch { ageSec = null }
+
+  // 触发器每 60 秒写一次，90 秒没更新就认为没在跑
+  const trigger = ageSec !== null && ageSec <= 90
+  const scripts = st.scripts
+
+  let reason = ''
+  if (!scripts && !trigger) reason = '宿主机没有安装备份脚本，触发器也没有在跑：请在宿主机执行 scripts/install-backup.sh'
+  else if (!scripts) reason = '宿主机缺少 incudal-backup.sh / incudal-restore.sh：请重新执行 scripts/install-backup.sh'
+  else if (!trigger) reason = `宿主机触发器未运行（.status ${ageSec === null ? '不存在' : `已 ${ageSec} 秒未更新`}）：请检查 crontab 里的 incudal-backup-trigger.sh`
+  return { scripts, trigger, ageSec, reason }
+}
+
 export default async function backupRoutes(fastify: FastifyInstance): Promise<void> {
   // ---------------- 读配置 ----------------
   fastify.get('/admin/backup/config', { onRequest: [fastify.authenticate, fastify.requireAdmin] }, async () => {
     const c = readConf()
+    const host = hostReadiness()
     return {
       // 没填仓库地址就不算启用（避免「没填地址却显示已启用」）
       githubEnabled: c.GITHUB_ENABLED === 'true' && !!(c.GITHUB_REPO || '').trim(),
@@ -143,10 +173,17 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
       keepDays: Number(c.KEEP_DAYS || 14),
       backupTime: c.BACKUP_TIME || '03:10',
       backupTz: c.BACKUP_TZ || 'Asia/Shanghai',
-      autoBackup: (c.AUTO_BACKUP || 'off') === 'on',
+      // 配置里写着 on，但宿主机没脚本/触发器没跑 → 实际不会备份，按关闭显示
+      autoBackup: (c.AUTO_BACKUP || 'off') === 'on' && host.scripts && host.trigger,
+      autoBackupConfigured: (c.AUTO_BACKUP || 'off') === 'on',
+      hostTriggerAlive: host.trigger,
+      hostStatusAgeSec: host.ageSec,
+      hostReason: host.reason,
       // 面板在容器里，看不到宿主机的脚本文件；真正的可用性判据是
       // 备份目录可写（能写 .request 让宿主机触发器接手）。
-      scriptsReady: (() => { try { return existsSync(BACKUP_DIR) && accessSync(BACKUP_DIR, constants.W_OK) === undefined } catch { return false } })(),
+      // 真判据：宿主机脚本装没装（目录可写只是容器自己的事，不能当「就绪」）
+      scriptsReady: host.scripts && host.trigger,
+      dirWritable: (() => { try { return existsSync(BACKUP_DIR) && accessSync(BACKUP_DIR, constants.W_OK) === undefined } catch { return false } })(),
       // rclone / 脚本都在宿主机上，容器里看不到 → 由宿主机触发器写 .status 上报
       rcloneInstalled: readHostStatus().rclone,
       hostScriptsReady: readHostStatus().scripts,
@@ -209,6 +246,13 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
       }
       let autoChange: boolean | null = null
       if (b.autoBackup !== undefined) {
+        // 想开自动备份，但宿主机没脚本 → 直接拒绝，避免「显示已启用但永远不跑」
+        if (b.autoBackup) {
+          const host = hostReadiness()
+          if (!host.scripts || !host.trigger) {
+            return reply.code(400).send(apiError(ErrorCode.VALIDATION_ERROR, '无法开启自动备份：' + host.reason))
+          }
+        }
         patch.AUTO_BACKUP = b.autoBackup ? 'on' : 'off'
         autoChange = !!b.autoBackup
       }
@@ -365,6 +409,10 @@ export default async function backupRoutes(fastify: FastifyInstance): Promise<vo
 
   // ---------------- 立即备份（走宿主机触发器）----------------
   fastify.post('/admin/backup/run', { onRequest: [fastify.authenticate, fastify.requireAdmin] }, async (request, reply) => {
+    const host = hostReadiness()
+    if (!host.scripts || !host.trigger) {
+      return reply.code(400).send(apiError(ErrorCode.VALIDATION_ERROR, '宿主机备份环境未就绪：' + host.reason))
+    }
     const out = await fireTrigger('run')
     if (!out.ok) return reply.code(500).send({ ok: false, error: out.error, log: out.detail })
     await logAdminAction(request.user.id, 'backup.run', { resourceType: 'backup' }).catch(() => {})

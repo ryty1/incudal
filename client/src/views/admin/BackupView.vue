@@ -18,6 +18,14 @@
       <span class="bk-x" @click="msg.text = ''">×</span>
     </div>
 
+    <!-- 宿主机未就绪：脚本缺失 / 触发器没跑 -->
+    <div v-if="cfg.hostReason" class="bk-alert is-error">
+      <b>宿主机备份环境未就绪</b>：{{ cfg.hostReason }}
+      <div class="text-xs mt-1 opacity-80">
+        在宿主机执行：<code>sudo bash scripts/install-backup.sh</code>（仓库目录下），完成后本页会自动恢复。
+      </div>
+    </div>
+
     <!-- 状态概览 -->
     <div class="card p-6">
       <h3>状态</h3>
@@ -288,11 +296,14 @@ const cfg = reactive({
   scriptsReady: false,
   sshKeyReady: false,
   githubEnabled: false,
-  autoBackup: true
+  autoBackup: false,
+  autoBackupConfigured: false,
+  hostTriggerAlive: false,
+  hostReason: ''
 })
 
 const form = reactive({
-  autoBackup: true,
+  autoBackup: false,
   backupTime: '03:10',
   backupTz: 'Asia/Shanghai',
   githubEnabled: false,
@@ -376,8 +387,11 @@ async function loadConfig() {
   cfg.scriptsReady = c.scriptsReady
   cfg.sshKeyReady = !!c.sshKeyReady
   cfg.githubEnabled = !!c.githubEnabled
-  cfg.autoBackup = c.autoBackup !== false
-  form.autoBackup = c.autoBackup !== false
+  cfg.autoBackup = c.autoBackup === true
+  cfg.autoBackupConfigured = c.autoBackupConfigured === true
+  cfg.hostTriggerAlive = c.hostTriggerAlive === true
+  cfg.hostReason = c.hostReason || ''
+  form.autoBackup = c.autoBackup === true
   if (c.sshKeyReady) await loadPublicKey()
   form.githubEnabled = !!c.githubEnabled
   form.githubRepo = c.githubRepo || ''
