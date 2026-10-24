@@ -16,6 +16,7 @@ import { prisma } from '../db/prisma.js'
 import { checkHostingAccess } from '../lib/hosting-access.js'
 import { createInboxMessage } from '../db/inbox.js'
 import { createLog } from '../db/logs.js'
+import { ensurePanelCert } from '../lib/panel-cert.js'
 import { apiError, ErrorCode, type ErrorCodeType } from '../lib/errors.js'
 import { createInstanceTask, getActiveTaskForInstance } from '../db/instance-tasks.js'
 import { getSSHKeyById, getSSHKeysByUserId } from '../db/ssh-keys.js'
@@ -1378,11 +1379,19 @@ export default async function hostRoutes(fastify: FastifyInstance) {
 
       // 注意: 已移除证书下载的时效和次数限制，允许无限次下载直到安装完成
 
-      // 读取证书文件
-      const certPath = process.env.PANEL_CRT_PATH || join(__dirname, '../../certs/client.crt')
+      // 读取证书文件（缺失则现场生成，避免新装机器上第 5 步必然失败）
+      const cert = ensurePanelCert()
+      if (!cert.ok) {
+        request.log.error({ err: cert.error }, 'Panel client certificate unavailable')
+        return reply.code(500).send(
+          '# Error: Certificate file not found\n' +
+          `# ${cert.error || ''}\n` +
+          '# 修复：在宿主机执行 sudo bash scripts/install-docker.sh（会生成 server/certs/client.{crt,key}）\n'
+        )
+      }
       let certContent: string
       try {
-        certContent = readFileSync(certPath, 'utf-8')
+        certContent = readFileSync(cert.paths.crt, 'utf-8')
       } catch (err) {
         request.log.error(err, 'Failed to read certificate file')
         return reply.code(500).send('# Error: Certificate file not found')

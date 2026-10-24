@@ -238,8 +238,10 @@ generate_panel_cert() {
         2>/dev/null
 
     chmod 644 "$cert_file" "$key_file"
+    # 容器内运行用户是 1001:65533；目录归它所有，运行时才能自动续期/重建
+    chown -R 1001:65533 "$cert_dir" 2>/dev/null || true
 
-    log "面板客户端证书生成完成"
+    log "面板客户端证书生成完成（CN=incudal-panel，10 年）"
 }
 
 # ========================== 生成 .env 文件 ==========================

@@ -30,7 +30,7 @@ services:
       - TRAFFIC_HOST_CONCURRENCY=${TRAFFIC_HOST_CONCURRENCY:-3}
       - DB_WORKER_BACKOFF_MS=${DB_WORKER_BACKOFF_MS:-15000}
     volumes:
-      - ./server/certs:/app/server/certs:ro
+      - ./server/certs:/app/server/certs
       - ./server/agent-dist:/app/server/agent-dist:ro
       # 备份功能：面板需要读写宿主机的备份目录与配置（容器内看不到 /root）
       - /srv/incudal-backups:/backup

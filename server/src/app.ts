@@ -148,6 +148,7 @@ const fastify = Fastify({
 
 // 自定义 schema 验证错误处理
 import type { FastifyError } from 'fastify'
+import { ensurePanelCert } from './lib/panel-cert.js'
 
 fastify.setErrorHandler((error: FastifyError, _request, reply) => {
   if ((error as FastifyError & { code?: string }).code === 'FST_REQ_FILE_TOO_LARGE') {
@@ -450,6 +451,16 @@ const start = async (): Promise<void> => {
     const retiredTaskCleanup = await failRetiredBackupTasks()
     if (retiredTaskCleanup.restoreCount > 0 || retiredTaskCleanup.uploadCount > 0) {
       console.log(`📦 已终止 ${retiredTaskCleanup.restoreCount} 个历史恢复任务，${retiredTaskCleanup.uploadCount} 个历史上传任务`)
+    }
+
+    // 面板 mTLS 客户端证书：缺失时自动生成（节点安装脚本第 5 步要用）
+    {
+      const cert = ensurePanelCert()
+      if (cert.ok) {
+        if (cert.generated) console.log(`🔐 已生成面板客户端证书: ${cert.paths.crt}`)
+      } else {
+        console.error('⚠️  面板客户端证书不可用，节点安装会失败:', cert.error)
+      }
     }
 
     const port = parseInt(process.env.PORT || '3000', 10)

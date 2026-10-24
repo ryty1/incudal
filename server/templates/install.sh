@@ -1990,7 +1990,7 @@ import_cert() {
 
     local cert_url="${PANEL_URL}/api/hosts/cert/${TOKEN}"
 
-    if ! curl -sSf "$cert_url" \
+    if ! curl -sSfL "$cert_url" \
         | incus config trust add-certificate - --name panel >/dev/null 2>&1; then
         error "证书导入失败！请检查："
         error "  1. Token 是否正确"

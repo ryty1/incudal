@@ -51,7 +51,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # 创建非 root 用户
-RUN addgroup --system --gid 1001 nodejs && \
+RUN apk add --no-cache openssl \
+ && addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 incudal
 
 # 复制依赖 (包含生成的 Prisma Client)
