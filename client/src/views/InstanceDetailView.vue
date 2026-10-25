@@ -15,6 +15,7 @@ import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { useToast } from '@/stores/toast'
 import { useConfigStore } from '@/stores/config'
 import InstanceInfoTab from '@/components/instance/InstanceInfoTab.vue'
+import LatencyChart from '@/components/host/LatencyChart.vue'
 // 非默认 tab 组件使用异步加载，减少实例详情页初始包体积（用户切换 tab 时才加载对应代码）
 const InstanceNetworkTab = defineAsyncComponent(() => import('@/components/instance/InstanceNetworkTab.vue'))
 const InstanceQuotaTab = defineAsyncComponent(() => import('@/components/instance/InstanceQuotaTab.vue'))
@@ -90,6 +91,31 @@ function getReturnPath(): string {
 // 标签页状态
 type TabType = 'info' | 'network' | 'sites' | 'traffic' | 'snapshots' | 'quota' | 'config' | 'logs'
 const activeTab = ref<TabType>('info')
+
+// ── 节点延迟（该实例所在节点到中国大陆三网）──
+const latencySeries = ref<Record<string, Array<{ t: string; ms: number | null; loss: number }>>>({})
+const latencyMinutes = ref(60)
+const latencyLoading = ref(false)
+let latencyTimer: number | null = null
+
+async function loadInstanceLatency() {
+  const hostId = (instance.value as any)?.hostId || (instance.value as any)?.host_id
+  if (!hostId) return
+  latencyLoading.value = true
+  try {
+    const res = await api.hosts.latencyHistory(Number(hostId), latencyMinutes.value)
+    latencySeries.value = res.series || {}
+  } catch {
+    // 失败保留旧数据
+  } finally {
+    latencyLoading.value = false
+  }
+}
+
+function setInstanceLatencyRange(minutes: number) {
+  latencyMinutes.value = minutes
+  void loadInstanceLatency()
+}
 
 // 实例数据
 const instance = ref<InstanceWithDetails | null>(null)
@@ -361,6 +387,7 @@ onMounted(async (): Promise<void> => {
 
 onUnmounted(() => {
   isComponentMounted.value = false
+  if (latencyTimer) { window.clearInterval(latencyTimer); latencyTimer = null }
   // 关闭终端模态框（确保断开连接）
   showTerminalModal.value = false
   terminalConnected.value = false
@@ -822,6 +849,10 @@ async function loadInstance(): Promise<void> {
     const response = await api.instances.get(instanceId)
     instance.value = (response as { instance?: Instance }).instance || null
     if (instance.value) {
+      // 节点延迟曲线：首次加载拉一次，之后每分钟刷新
+      void loadInstanceLatency()
+      if (latencyTimer) window.clearInterval(latencyTimer)
+      latencyTimer = window.setInterval(() => { void loadInstanceLatency() }, 60_000)
       // 如果实例绑定了套餐，仅在 package_id 变化时加载套餐信息（套餐信息极少变化，不需要每5秒重新获取）
       if (instance.value.package_id && instance.value.package_id > 0) {
         if (lastFetchedPackageId !== instance.value.package_id) {
@@ -3002,6 +3033,35 @@ function formatShortDate(dateStr: string | null | undefined): string {
               @edit-config="openConfigEditModal"
               @redeem="openRedeemModal"
             />
+
+            <!-- 节点到中国大陆三网延迟 -->
+            <div class="card p-5 mt-4">
+              <div class="mb-3 flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h2 class="text-sm font-medium text-themed">{{ $t('instance.detail.networkLatency') }}</h2>
+                  <p class="mt-0.5 text-2xs text-themed-muted">
+                    该实例所在节点到中国大陆三网（广东/上海 × 联通/移动/电信）的 TCP 延迟与丢包
+                  </p>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button
+                    v-for="opt in [{ m: 60, label: '1 小时' }, { m: 360, label: '6 小时' }, { m: 1440, label: '24 小时' }]"
+                    :key="opt.m"
+                    class="rounded-md px-2.5 py-1 text-xs transition-colors"
+                    :class="latencyMinutes === opt.m
+                      ? 'bg-blue-500/15 text-blue-500 font-medium'
+                      : 'text-themed-muted hover:bg-black/5 dark:hover:bg-white/5'"
+                    @click="setInstanceLatencyRange(opt.m)"
+                  >{{ opt.label }}</button>
+                </div>
+              </div>
+              <LatencyChart
+                :series="latencySeries"
+                :height="200"
+                :window-minutes="latencyMinutes"
+                :loading="latencyLoading"
+              />
+            </div>
           </div>
 
           <!-- Network Tab -->

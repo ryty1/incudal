@@ -1305,6 +1305,7 @@ export default {
         },
         // 实例详情页
         detail: {
+            networkLatency: '网络延迟',
             invalidId: '无效的实例 ID',
             notExist: '实例不存在',
             loadFailed: '加载实例失败',

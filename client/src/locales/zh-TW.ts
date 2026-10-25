@@ -10,6 +10,7 @@ export default {
 
     // 通用
     common: {
+        unlimited: '無限制',
         confirm: '確認',
         cancel: '取消',
         save: '儲存',
@@ -1485,6 +1486,7 @@ export default {
         },
         createdAt: '建立時間',
         detail: {
+            networkLatency: '網路延遲',
             invalidId: '無效的實例 ID',
             notExist: '實例不存在',
             loadFailed: '載入實例失敗',
@@ -5947,6 +5949,7 @@ export default {
         forbidden: '禁止存取',
         forbiddenMessage: '您沒有權限執行此操作。',
         goHome: '返回首頁',
+        backHome: '返回首頁',
         goBack: '返回上一頁',
         tryAgain: '重試',
     },

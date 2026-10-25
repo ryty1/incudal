@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useThemeStore } from '@/stores/theme'
+import api from '@/api'
 import type { AvailableHost, Package } from '@/types/api'
 import FlagIcon from '@/components/FlagIcon.vue'
+import LatencyChart from '@/components/host/LatencyChart.vue'
 
 const { t } = useI18n()
 
@@ -29,6 +32,57 @@ const emit = defineEmits<{
 }>()
 
 const themeStore = useThemeStore()
+
+// ── 节点延迟弹窗 ──
+const latencyHost = ref<AvailableHost | null>(null)
+const latencySeries = ref<Record<string, Array<{ t: string; ms: number | null; loss: number }>>>({})
+const latencyMinutes = ref(60)
+const latencyLoading = ref(false)
+let latencyTimer: number | null = null
+
+async function loadLatency() {
+  if (!latencyHost.value) return
+  latencyLoading.value = true
+  try {
+    const res = await api.hosts.latencyHistory(latencyHost.value.id, latencyMinutes.value)
+    latencySeries.value = res.series || {}
+  } catch {
+    // 刷新失败保留上一次的数据，避免图表突然空白
+  } finally {
+    latencyLoading.value = false
+  }
+}
+
+function openLatency(host: AvailableHost) {
+  latencyHost.value = host
+  latencyMinutes.value = 60
+  latencySeries.value = {}
+  void loadLatency()
+  if (latencyTimer) window.clearInterval(latencyTimer)
+  latencyTimer = window.setInterval(() => { void loadLatency() }, 60_000)
+}
+
+function closeLatency() {
+  latencyHost.value = null
+  if (latencyTimer) { window.clearInterval(latencyTimer); latencyTimer = null }
+}
+
+function setLatencyRange(minutes: number) {
+  latencyMinutes.value = minutes
+  void loadLatency()
+}
+
+/** 出站自检：cn-bd-v4 = 国内站点，us-cf-v4 = 国际站点 */
+function controlText(key: string): string {
+  const k = key === 'intl' ? 'us-cf-v4' : key
+  const arr = latencySeries.value[k] || []
+  const last = arr[arr.length - 1]
+  if (!last) return '无数据'
+  if (last.ms === null) return '超时'
+  return `${Math.round(last.ms)} ms`
+}
+
+onBeforeUnmount(() => { if (latencyTimer) window.clearInterval(latencyTimer) })
 
 // 格式化资源显示（可选显示扣减部分）
 function formatResourceDisplay(available: number, selected: number, unit: string): string {
@@ -154,20 +208,36 @@ function formatTraffic(bytes: string | null | undefined): string {
           <span v-if="host.effectiveTrafficLimit && host.trafficMultiplier && host.trafficMultiplier !== 1" class="opacity-70">({{ host.trafficMultiplier }}x)</span>
         </p>
         <p v-else class="truncate text-2xs text-themed-muted">{{ host.location }}</p>
-        <div class="mt-2 flex items-center justify-between">
+        <div class="mt-2 flex items-end justify-between gap-2">
           <span
-            class="text-2xs"
+            class="text-2xs min-w-0 flex-1 truncate"
             :class="themeStore.isDark ? 'text-gray-600' : 'text-gray-500'"
           >
             {{ t('instance.selector.available') }}: {{ formatResourceDisplay(host.resources?.cpuAvailable, props.cpu, '%') }} / {{ formatMemoryDisplay(host.resources?.memoryAvailable, props.memory) }}
           </span>
+          <div class="flex h-6 items-center gap-1 flex-shrink-0">
+          <!-- 延迟曲线按钮 -->
+          <button
+            type="button"
+            class="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 leading-none hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            :title="'查看该节点到中国大陆的延迟'"
+            @click.stop="openLatency(host)"
+          >
+            <svg class="w-4 h-4" :class="themeStore.isDark ? 'text-emerald-400' : 'text-emerald-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 17l5-5 4 3 6-7" />
+              <circle cx="3" cy="17" r="1.4" fill="currentColor" stroke="none" />
+              <circle cx="8" cy="12" r="1.4" fill="currentColor" stroke="none" />
+              <circle cx="12" cy="15" r="1.4" fill="currentColor" stroke="none" />
+              <circle cx="18" cy="8" r="1.4" fill="currentColor" stroke="none" />
+            </svg>
+          </button>
           <!-- 探针图标 -->
           <a
             v-if="host.probeUrl"
             :href="host.probeUrl"
             target="_blank"
             rel="noopener noreferrer"
-            class="flex-shrink-0 ml-2 p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            class="inline-flex h-6 w-6 flex-shrink-0 items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
             :title="t('instance.selector.viewProbe')"
             @click.stop
           >
@@ -175,8 +245,53 @@ function formatTraffic(bytes: string | null | undefined): string {
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </a>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- 延迟弹窗 -->
+    <Teleport to="body">
+      <div
+        v-if="latencyHost"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        @click.self="closeLatency"
+      >
+        <div class="w-full max-w-3xl rounded-xl bg-themed border border-themed shadow-xl">
+          <div class="flex items-start justify-between gap-3 border-b border-themed px-4 py-3">
+            <div>
+              <div class="flex items-center gap-2">
+                <FlagIcon :code="latencyHost.countryCode || 'us'" size="sm" />
+                <span class="text-sm font-medium text-themed">{{ latencyHost.name?.toUpperCase() || latencyHost.name }}</span>
+                <span class="text-2xs text-themed-muted">{{ latencyHost.location }}</span>
+              </div>
+              <p class="mt-0.5 text-2xs text-themed-muted">
+                该节点到中国大陆三网（广东/上海 × 联通/移动/电信）的 TCP 延迟与丢包
+              </p>
+            </div>
+            <div class="flex items-center gap-1">
+              <button
+                v-for="opt in [{ m: 60, label: '1 小时' }, { m: 360, label: '6 小时' }, { m: 1440, label: '24 小时' }]"
+                :key="opt.m"
+                class="rounded-md px-2 py-1 text-xs transition-colors"
+                :class="latencyMinutes === opt.m ? 'bg-blue-500/15 text-blue-500 font-medium' : 'text-themed-muted hover:bg-black/5 dark:hover:bg-white/5'"
+                @click="setLatencyRange(opt.m)"
+              >{{ opt.label }}</button>
+              <button class="ml-1 rounded-md p-1 text-themed-muted hover:bg-black/5 dark:hover:bg-white/5" @click="closeLatency">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="px-4 py-3">
+            <LatencyChart :series="latencySeries" :height="220" :window-minutes="latencyMinutes" :loading="latencyLoading" />
+            <p class="mt-2 text-2xs text-themed-muted">
+              节点出站自检：国内 {{ controlText('cn-bd-v4') }} · 国际 {{ controlText('intl') }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

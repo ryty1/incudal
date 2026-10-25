@@ -6,6 +6,7 @@ import { useThemeStore } from '@/stores/theme'
 import { useToast } from '@/stores/toast'
 import api from '@/api'
 import FlagIcon from '@/components/FlagIcon.vue'
+import LatencyChart from '@/components/host/LatencyChart.vue'
 import type { HostAgentStatus } from '@/types/api'
 
 const { t } = useI18n()
@@ -78,6 +79,31 @@ interface TrafficSummary {
 }
 
 const trafficHistory = ref<TrafficHistoryItem[]>([])
+
+// ── 节点延迟曲线（广州/上海 TCP 探针）──
+type LatencyPoint = { t: string; ms: number | null; loss: number }
+const latencySeries = ref<Record<string, LatencyPoint[]>>({})
+const latencyMinutes = ref(60)
+const latencyLoading = ref(false)
+const latencyTimer = ref<number | null>(null)
+
+async function loadLatency() {
+  if (!props.host?.id) return
+  latencyLoading.value = true
+  try {
+    const res = await api.hosts.latencyHistory(props.host.id, latencyMinutes.value)
+    latencySeries.value = res.series || {}
+  } catch {
+    latencySeries.value = {}
+  } finally {
+    latencyLoading.value = false
+  }
+}
+
+function setLatencyRange(minutes: number) {
+  latencyMinutes.value = minutes
+  void loadLatency()
+}
 const trafficSummary = ref<TrafficSummary | null>(null)
 const trafficPeriod = ref<{ periodStart: string; periodEnd: string } | null>(null)
 const trafficLoading = ref(true)
@@ -258,10 +284,15 @@ watch(() => props.host.id, () => {
   loadTrafficHistory()
   loadAgentStatus()
   startAgentStatusAutoRefresh()
+  // 延迟曲线：进页面拉一次，之后每分钟刷新
+  void loadLatency()
+  if (latencyTimer.value) window.clearInterval(latencyTimer.value)
+  latencyTimer.value = window.setInterval(() => { void loadLatency() }, 60_000)
 }, { immediate: true })
 
 onBeforeUnmount(() => {
   stopAgentStatusAutoRefresh()
+  if (latencyTimer.value) { window.clearInterval(latencyTimer.value); latencyTimer.value = null }
 })
 
 const agentIncusStatus = computed(() => {
@@ -1040,5 +1071,33 @@ const xAxisLabels = computed(() => {
         {{ t('traffic.noHistoryData') }}
       </span>
     </div>
+  </div>
+
+  <!-- 网络延迟（广州 / 上海 TCP 探针） -->
+  <div class="card p-5 mt-4">
+    <div class="mb-3 flex items-center justify-between gap-3 flex-wrap">
+      <div>
+        <h2 class="text-sm font-medium" :class="themeStore.isDark ? 'text-gray-300' : 'text-gray-700'">
+          网络延迟
+        </h2>
+        <p class="mt-0.5 text-xs" :class="themeStore.isDark ? 'text-gray-500' : 'text-gray-400'">
+          节点本机探测中国大陆三网（广东/上海 × 联通/移动/电信），每分钟一次，含丢包率
+        </p>
+      </div>
+      <div class="flex items-center gap-1">
+        <button
+          v-for="opt in [{ m: 60, label: '1 小时' }, { m: 360, label: '6 小时' }, { m: 1440, label: '24 小时' }]"
+          :key="opt.m"
+          class="rounded-md px-2.5 py-1 text-xs transition-colors"
+          :class="latencyMinutes === opt.m
+            ? 'bg-blue-500/15 text-blue-500 font-medium'
+            : (themeStore.isDark ? 'text-gray-400 hover:bg-white/5' : 'text-gray-500 hover:bg-black/5')"
+          @click="setLatencyRange(opt.m)"
+        >
+          {{ opt.label }}
+        </button>
+      </div>
+    </div>
+    <LatencyChart :series="latencySeries" :height="220" :window-minutes="latencyMinutes" :loading="latencyLoading" />
   </div>
 </template>

@@ -797,6 +797,36 @@ async function serializeAgentStatus(agent: HostAgentRecord) {
   }
 }
 
+/**
+ * 落库 agent 上报的延迟探测结果。
+ * probe key 形如 gd-cu-v4 / sh-ct-v6（城市-运营商-协议）。
+ */
+async function storeLatencyProbes(hostId: number, raw: unknown): Promise<void> {
+  if (!Array.isArray(raw) || raw.length === 0) return
+  const rows: string[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue
+    const rec = item as Record<string, unknown>
+    const key = String(rec.key || '')
+    if (!/^[a-z0-9]{2,6}-[a-z0-9]{2,6}-v[46]$/.test(key)) continue
+    const latency = rec.latencyMs === null || rec.latencyMs === undefined ? null : Number(rec.latencyMs)
+    const loss = Number(rec.lossPct)
+    const samples = Number(rec.samples)
+    rows.push(
+      `(${hostId}, '${key}', ${latency === null || !Number.isFinite(latency) ? 'NULL' : Math.round(latency * 10) / 10}, ` +
+      `${Number.isFinite(loss) ? Math.max(0, Math.min(100, Math.round(loss))) : 100}, ` +
+      `${Number.isFinite(samples) ? Math.max(0, Math.min(1000, Math.round(samples))) : 0})`
+    )
+  }
+  if (!rows.length) return
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO host_latency_samples (host_id, probe, latency_ms, loss_pct, samples) VALUES ${rows.join(',')}`
+  )
+  await prisma.$executeRawUnsafe(
+    `DELETE FROM host_latency_samples WHERE measured_at < now() - interval '7 days'`
+  ).catch(() => undefined)
+}
+
 function buildHeartbeatReport(body: AgentHeartbeatBody): Record<string, unknown> {
   return {
     runtime: body.runtime ?? {},
@@ -1345,6 +1375,13 @@ export default async function agentRoutes(fastify: FastifyInstance) {
         lastHeartbeatIp: sanitizeShortString(getAgentHeartbeatIp(request), 128)
       }
     })
+
+    // 节点本机对中国大陆三网探测点的 TCP 延迟/丢包（agent 上报）
+    try {
+      await storeLatencyProbes(agent.hostId, (request.body as { latencyProbes?: unknown }).latencyProbes)
+    } catch (error) {
+      request.log.warn({ agentId: agent.agentId, error }, 'Failed to store latency probes')
+    }
 
     return {
       ok: true,

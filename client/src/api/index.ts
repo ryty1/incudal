@@ -1368,6 +1368,12 @@ const api = {
     listHosted: (params: { userId?: number; page?: number; pageSize?: number; search?: string } = {}): Promise<{ hosts: HostWithDetails[]; total: number; page: number; pageSize: number; totalPages: number }> =>
       http.get('/hosts', { params: { ...params, scope: 'hosted' } }),
     get: (id: number): Promise<HostWithDetails> => http.get(`/hosts/${id}`),
+    // 单节点延迟曲线（分钟粒度）
+    latencyHistory: (id: number, minutes = 60): Promise<{ minutes: number; probes: string[]; series: Record<string, Array<{ t: string; ms: number | null; loss: number }>> }> =>
+      http.get(`/hosts/${id}/latency/history`, { params: { minutes } }),
+    // 广州/上海探针测得的节点延迟与丢包
+    latencySummary: (): Promise<{ probes: string[]; hosts: Record<string, Record<string, { latencyMs: number | null; lossPct: number; at: string }>> }> =>
+      http.get('/hosts/latency/summary'),
     lookupGiftTargetUser: (hostId: number, username: string): Promise<{
       user: {
         id: number

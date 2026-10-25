@@ -1305,6 +1305,7 @@ export default {
         },
         // Instance detail page
         detail: {
+            networkLatency: 'Network Latency',
             invalidId: 'Invalid instance ID',
             notExist: 'Instance does not exist',
             loadFailed: 'Failed to load instance',
@@ -7791,6 +7792,8 @@ titleChange: 'Change Email',
             // Prize management
             managePrizes: 'Manage Prizes',
             addPrize: 'Add Prize',
+            prize: 'Prize',
+            value: 'Value',
             prizeName: 'Prize Name',
             prizeType: 'Prize Type',
             prizeValue: 'Prize Value',

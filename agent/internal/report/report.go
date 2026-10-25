@@ -7,6 +7,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"incudal-agent/internal/probe"
 )
 
 var incusSocketCandidates = []string{
@@ -18,7 +20,10 @@ var incusSocketCandidates = []string{
 func HeartbeatPayload(version string, heartbeatIntervalSeconds int) map[string]any {
 	return map[string]any{
 		"version":      version,
-		"capabilities": []any{"heartbeat", "report", "host-metrics", "instance-status", "traffic-counters"},
+		"capabilities": []any{"heartbeat", "report", "host-metrics", "instance-status", "traffic-counters", "latency-probe"},
+		// 节点本机对中国大陆三网探测点的 TCP 延迟/丢包（广东/上海 × 联通/移动/电信 × v4/v6）
+		"latencyProbes": probe.RunAuto(),
+		"latencyFamilies": probe.Families(),
 		"runtime": map[string]any{
 			"goos":   runtime.GOOS,
 			"goarch": runtime.GOARCH,

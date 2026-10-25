@@ -55,6 +55,7 @@ import imageRoutes from './routes/images.js'
 import logRoutes from './routes/logs.js'
 import systemConfigRoutes from './routes/system-config.js'
 import backupRoutes from './routes/backup.js'
+import latencyRoutes from './routes/latency.js'
 import trafficRoutes from './routes/traffic.js'
 import transferRoutes from './routes/transfers.js'
 import friendsRoutes from './routes/friends.js'
@@ -385,6 +386,7 @@ await fastify.register(imageRoutes, { prefix: '/api/images' })
 await fastify.register(logRoutes, { prefix: '/api/logs' })
 await fastify.register(systemConfigRoutes, { prefix: '/api/system-config' })
   await fastify.register(backupRoutes, { prefix: '/api' })
+  await fastify.register(latencyRoutes)
 await fastify.register(trafficRoutes, { prefix: '/api' })
 await fastify.register(transferRoutes, { prefix: '/api/transfers' })
 await fastify.register(friendsRoutes, { prefix: '/api/friends' })
