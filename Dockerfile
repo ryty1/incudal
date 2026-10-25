@@ -49,9 +49,11 @@ FROM node:26-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+# 默认中国时区（node-cron 的 0 3 * * * 之类按这个时区跑）；compose 里可用 TZ 覆盖
+ENV TZ=Asia/Shanghai
 
 # 创建非 root 用户
-RUN apk add --no-cache openssl \
+RUN apk add --no-cache openssl tzdata \
  && addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 incudal
 
