@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, type Ref } from 'vue'
 import api from '@/api'
+import { silenceToastsFor } from './toast'
 import type { AuthUser } from '@/types/store.js'
 import type { RegisterRequest } from '@/types/api.js'
 
@@ -85,6 +86,9 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function logout() {
+    // 登出后 5 秒内的错误 toast 全部吞掉：此时还在飞的轮询请求必然 401，
+    // 不吞的话右下角会冒出一排「操作失败」，用户以为登出失败了
+    silenceToastsFor(5000)
     // 先调用后端登出 API（清除服务端会话和记录日志）
     // 必须在清除本地状态之前调用，否则请求拦截器无法获取 token
     if (token.value) {

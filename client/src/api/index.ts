@@ -530,6 +530,13 @@ http.interceptors.response.use(
 
     // 401 未授权，尝试刷新 token
     if (error.response?.status === 401) {
+      // 本地已经没有 token（用户刚登出 / 从未登录）：
+      // 不要再打 /auth/refresh，也不要向上抛可见错误，
+      // 否则登出瞬间还在飞的轮询请求会在右下角弹出 REFRESH_TOKEN_INVALID
+      if (!localStorage.getItem('token')) {
+        return Promise.reject({ message: '', code: 'UNAUTHENTICATED', silent: true, canceled: true })
+      }
+
       // 排除登录、注册、刷新和check-2fa接口本身
       const isAuthEndpoint = requestUrl.startsWith('/auth/login') ||
         requestUrl.startsWith('/auth/register') ||
@@ -670,6 +677,13 @@ http.interceptors.response.use(
         } else {
           // 其他错误（如网络错误），不立即跳转，记录日志
           console.warn('Token refresh failed, but not invalidating session:', refreshError)
+        }
+        if (refreshError?.message === 'REFRESH_TOKEN_INVALID') {
+          return Promise.reject({
+            message: '登录状态已失效，请重新登录',
+            code: 'REFRESH_TOKEN_INVALID',
+            silent: true,
+          })
         }
         return Promise.reject(refreshError)
       } finally {
