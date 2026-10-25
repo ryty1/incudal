@@ -171,6 +171,15 @@ export default {
         disabled: '停用',
         active: '已啟用',
         inactive: '已停用',
+        failed: '失敗',
+        noResults: '沒有結果',
+        operationFailed: '操作失敗',
+        pagination: '分頁',
+        prev: '上一頁',
+        retry: '重試',
+        user: '用戶',
+        verify: '驗證',
+        verifying: '驗證中…',
     },
 
     validation: {
@@ -839,6 +848,7 @@ export default {
             understood: '我已瞭解',
             loadFailed: '載入服務條款失敗',
         },
+        enterEmailFirst: '請先輸入郵箱',
     },
 
     // 使用者選單
@@ -1199,6 +1209,7 @@ export default {
                 badge: '專區',
                 content: '此為 UID:{uid} 的專區，售後由 {username} 處理。',
             },
+            packagePrerequisiteRequired: '請先選擇套餐',
         },
         startingInstance: '{name} 啟動中',
         stoppedInstance: '{name} 已停止',
@@ -1504,6 +1515,7 @@ export default {
                 recreate: '正在重建...',
                 clone: '正在複製...',
                 change_host: '正在改節點...',
+                queuePosition: '隊列位置',
             },
             actions: {
                 starting: '實例啟動中',
@@ -2167,6 +2179,10 @@ export default {
                 nameRequired: '請輸入新實例名稱',
             },
         },
+        confirmDelete: '確認刪除該實例？此操作不可恢復。',
+        networkMode: {
+            routed: '獨立 IP',
+        },
     },
 
     // 新增連接埠映射彈窗
@@ -2323,6 +2339,8 @@ export default {
             policyDisabled: '自動快照已關閉',
             policySaveFailed: '儲存失敗',
         },
+        delete: '刪除快照',
+        restore: '恢復快照',
     },
 
     // 備份管理
@@ -2423,6 +2441,8 @@ export default {
             rollbackFailed: '回滾失敗',
             uploadStarted: '上傳任務已建立',
         },
+        delete: '刪除',
+        restore: '恢復',
     },
 
     // 主機相關
@@ -3816,6 +3836,8 @@ export default {
             next: '下一頁',
             totalRows: '共 {n} 條',
             confirmDelete: '確認刪除券 {code}？刪除後不可恢復。',
+            statusExpired: '已過期',
+            statusVoid: '已作廢',
         },
         botBridge: {
             guardDetail: {
@@ -6384,6 +6406,7 @@ export default {
             TRANSFER_INSUFFICIENT_BALANCE: '餘額不足，無法支付移轉手續費',
             PUSH_NOT_HOST_OWNER: '只有主機擁有者才能直接推送',
         },
+        searchPlaceholder: '搜索轉移記錄',
     },
 
     // 忘記密碼
@@ -6966,6 +6989,7 @@ export default {
             vmKernel: '支援自訂核心和核心模組',
             vmWindows: '可運行 Windows 等非 Linux 系統',
         },
+        editTitle: '編輯套餐',
     },
 
     // 敏感操作二次驗證
@@ -6991,7 +7015,19 @@ export default {
             transfer_instance: '移轉實例',
             delete_snapshot: '刪除快照',
             delete_backup: '刪除備份',
+            change_email: '更換郵箱',
+            delete_account: '註銷賬號',
         },
+        channels: {
+            email: '郵箱',
+            telegram: 'Telegram',
+        },
+        codePlaceholder: '輸入 6 位驗證碼',
+        codeSentTo: '驗證碼已發送至所選渠道',
+        invalidCode: '驗證碼不正確',
+        requestHint: '點擊發送後，輸入收到的 6 位數字',
+        sendingCode: '發送中…',
+        verifying: '驗證中…',
     },
 
     // 站內信
@@ -7024,6 +7060,7 @@ export default {
             ticket: '工單',
             system: '系統',
         },
+        deleted: '已刪除',
     },
 
     // 配額釋放
@@ -7194,6 +7231,8 @@ export default {
         },
         paste: '貼上',
         hideKeyboard: '收起鍵盤',
+        restore: '恢復終端',
+        searchPlaceholder: '搜索終端輸出',
     },
 
     // 終端機管理頁面
@@ -7332,6 +7371,7 @@ export default {
             zoomOut: '縮小',
             resetZoom: '重設縮放',
         },
+        searchPlaceholder: '搜索工單標題或內容',
     },
 
     // 簽到系統
@@ -7507,6 +7547,7 @@ export default {
         valueRange: '範圍：{min} - {max}',
         valueOutOfRange: '數值必須在 {min} 到 {max} 之間',
         valueMustBeInteger: '數值必須為整數',
+        confirmDelete: '確認刪除該卡密？',
     },
 
     // 擴充
@@ -7757,6 +7798,7 @@ export default {
         perMonth: '/月',
         perQuarter: '/季',
         perYear: '/年',
+        expired: '已過期',
     },
 
     // 託管準入

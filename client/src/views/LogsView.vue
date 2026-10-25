@@ -5,7 +5,7 @@ import { useThemeStore } from '@/stores/theme'
 import api from '@/api'
 import { useToast } from '@/stores/toast'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
-import { formatLogAction } from '@/utils/log-action'
+import { formatLogAction, formatLogModule } from '@/utils/log-action'
 import type { Log } from '@/types/api'
 
 // 为 KeepAlive include 匹配定义组件名称（必须在所有 import 之后）
@@ -132,7 +132,7 @@ function formatResult(result: string): string {
 
 // 格式化模块文本 - 直接显示原始值
 function formatModule(module: string): string {
-  return module
+  return formatLogModule(module, locale.value)
 }
 
 // 格式化操作文本 - 用共享映射表转成可读文案（见 utils/log-action.ts）

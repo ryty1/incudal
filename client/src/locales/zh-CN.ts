@@ -163,6 +163,15 @@ export default {
         active: '已启用',
         inactive: '已停用',
         unlimited: '无限制',
+        failed: '失败',
+        noResults: '没有结果',
+        operationFailed: '操作失败',
+        pagination: '分页',
+        prev: '上一页',
+        retry: '重试',
+        user: '用户',
+        verify: '验证',
+        verifying: '验证中…',
     },
 
     validation: {
@@ -831,6 +840,7 @@ export default {
             understood: '我已了解',
             loadFailed: '加载服务条款失败',
         },
+        enterEmailFirst: '请先输入邮箱',
     },
 
     // 用户菜单
@@ -1059,6 +1069,7 @@ export default {
                 badge: '专区',
                 content: '此为 UID:{uid} 的专区，售后由 {username} 处理。',
             },
+            packagePrerequisiteRequired: '请先选择套餐',
         },
         startingInstance: '{name} 启动中',
         stoppedInstance: '{name} 已停止',
@@ -1315,6 +1326,7 @@ export default {
                 recreate: '正在重建...',
                 clone: '正在复制...',
                 change_host: '正在改节点...',
+                queuePosition: '队列位置',
             },
             actions: {
                 starting: '实例启动中',
@@ -1657,6 +1669,10 @@ export default {
                 days: '天',
             },
         },
+        confirmDelete: '确认删除该实例？此操作不可恢复。',
+        networkMode: {
+            routed: '独立 IP',
+        },
     },
 
     // 端口映射弹窗
@@ -1813,6 +1829,8 @@ export default {
             policyDisabled: '自动快照已关闭',
             policySaveFailed: '保存失败',
         },
+        delete: '删除快照',
+        restore: '恢复快照',
     },
 
     // 备份管理
@@ -1938,6 +1956,8 @@ export default {
             failed: '失败',
             queuePosition: '队列位置：第 {position} 位',
         },
+        delete: '删除',
+        restore: '恢复',
     },
 
     // 仪表盘
@@ -2101,7 +2121,7 @@ titleChange: '修改邮箱',
                 confirmAction: '确认提交',
                 updateSuccess: '邮箱已更新',
                 verifying: '验证中...',
-                submitting: '提交中...'
+                submitting: '提交中...',
             }
         },
         // 头像
@@ -2673,6 +2693,8 @@ titleChange: '修改邮箱',
             next: '下一页',
             totalRows: '共 {n} 条',
             confirmDelete: '确认删除券 {code}？删除后不可恢复。',
+            statusExpired: '已过期',
+            statusVoid: '已作废',
         },
         botBridge: {
             guardDetail: {
@@ -5742,6 +5764,7 @@ titleChange: '修改邮箱',
             TRANSFER_INSUFFICIENT_BALANCE: '余额不足，无法支付转移手续费',
             PUSH_NOT_HOST_OWNER: '只有宿主机所有者才能直接推送',
         },
+        searchPlaceholder: '搜索转移记录',
     },
 
     // 好友系统
@@ -6261,6 +6284,7 @@ titleChange: '修改邮箱',
             vmKernel: '支持自定义内核和内核模块',
             vmWindows: '可运行 Windows 等非 Linux 系统',
         },
+        editTitle: '编辑套餐',
     },
 
     // 敏感操作二次验证
@@ -6588,6 +6612,7 @@ titleChange: '修改邮箱',
             ticket: '工单',
             system: '系统',
         },
+        deleted: '已删除',
     },
 
     // 配额释放
@@ -6765,6 +6790,8 @@ titleChange: '修改邮箱',
         // 移动端快捷工具栏
         paste: '粘贴',
         hideKeyboard: '收起键盘',
+        restore: '恢复终端',
+        searchPlaceholder: '搜索终端输出',
     },
 
     // 终端管理页面
@@ -6914,6 +6941,7 @@ titleChange: '修改邮箱',
             zoomOut: '缩小',
             resetZoom: '重置缩放',
         },
+        searchPlaceholder: '搜索工单标题或内容',
     },
 
     // 签到系统
@@ -7097,6 +7125,7 @@ titleChange: '修改邮箱',
         valueRange: '范围：{min} - {max}',
         valueOutOfRange: '数值必须在 {min} 到 {max} 之间',
         valueMustBeInteger: '数值必须为整数',
+        confirmDelete: '确认删除该卡密？',
     },
 
     // 扩展
@@ -7358,6 +7387,7 @@ titleChange: '修改邮箱',
         perMonth: '/月',
         perQuarter: '/季',
         perYear: '/年',
+        expired: '已过期',
     },
 
     // 托管准入

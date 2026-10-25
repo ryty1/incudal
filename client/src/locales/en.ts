@@ -163,6 +163,15 @@ export default {
         active: 'Active',
         inactive: 'Inactive',
         unlimited: 'Unlimited',
+        failed: 'Failed',
+        noResults: 'No results',
+        operationFailed: 'Operation failed',
+        pagination: 'Pagination',
+        prev: 'Previous',
+        retry: 'Retry',
+        user: 'User',
+        verify: 'Verify',
+        verifying: 'Verifying…',
     },
 
     validation: {
@@ -831,6 +840,7 @@ export default {
             understood: 'I Understand',
             loadFailed: 'Failed to load Terms of Service',
         },
+        enterEmailFirst: 'Please enter your email first',
     },
 
     // User Menu
@@ -1059,6 +1069,7 @@ export default {
                 badge: 'Zone',
                 content: 'This is a zone owned by UID:{uid}. After-sales support is handled by {username}.',
             },
+            packagePrerequisiteRequired: 'Please select a package first',
         },
         startingInstance: '{name} is starting',
         stoppedInstance: '{name} has been stopped',
@@ -1315,6 +1326,7 @@ export default {
                 recreate: 'Recreating...',
                 clone: 'Cloning...',
                 change_host: 'Changing host...',
+                queuePosition: 'Queue position',
             },
             actions: {
                 starting: 'Instance is starting',
@@ -1657,6 +1669,10 @@ export default {
                 days: 'days',
             },
         },
+        confirmDelete: 'Delete this instance? This cannot be undone.',
+        networkMode: {
+            routed: 'Routed IP',
+        },
     },
 
     // Port mapping modal
@@ -1813,6 +1829,8 @@ export default {
             policyDisabled: 'Auto snapshot disabled',
             policySaveFailed: 'Save failed',
         },
+        delete: 'Delete snapshot',
+        restore: 'Restore snapshot',
     },
 
     // Backup management
@@ -1938,6 +1956,8 @@ export default {
             failed: 'Failed',
             queuePosition: 'Queue position: #{position}',
         },
+        delete: 'Delete',
+        restore: 'Restore',
     },
 
     // Dashboard
@@ -2101,7 +2121,7 @@ titleChange: 'Change Email',
                 confirmAction: 'Confirm',
                 updateSuccess: 'Email updated',
                 verifying: 'Verifying...',
-                submitting: 'Submitting...'
+                submitting: 'Submitting...',
             }
         },
         // Avatar
@@ -2672,6 +2692,8 @@ titleChange: 'Change Email',
             next: 'Next',
             totalRows: '{n} total',
             confirmDelete: 'Delete coupon {code}? This cannot be undone.',
+            statusExpired: 'Expired',
+            statusVoid: 'Voided',
         },
         botBridge: {
             guardDetail: {
@@ -5734,6 +5756,7 @@ titleChange: 'Change Email',
             TRANSFER_INSUFFICIENT_BALANCE: 'Insufficient balance for transfer fee',
             PUSH_NOT_HOST_OWNER: 'Only host owner can push transfer directly',
         },
+        searchPlaceholder: 'Search transfer records',
     },
 
     // Friends System
@@ -6255,6 +6278,7 @@ titleChange: 'Change Email',
             vmKernel: 'Custom kernel and kernel modules support',
             vmWindows: 'Can run Windows and other non-Linux OS',
         },
+        editTitle: 'Edit package',
     },
 
     // Sensitive operation verification
@@ -6582,6 +6606,7 @@ titleChange: 'Change Email',
             ticket: 'Ticket',
             system: 'System',
         },
+        deleted: 'Deleted',
     },
 
     // Quota Release
@@ -6759,6 +6784,8 @@ titleChange: 'Change Email',
         // Mobile accessory bar
         paste: 'Paste',
         hideKeyboard: 'Hide Keyboard',
+        restore: 'Restore terminal',
+        searchPlaceholder: 'Search terminal output',
     },
 
     // Terminal management page
@@ -6908,6 +6935,7 @@ titleChange: 'Change Email',
             zoomOut: 'Zoom out',
             resetZoom: 'Reset zoom',
         },
+        searchPlaceholder: 'Search ticket title or content',
     },
 
     // Checkin system
@@ -7091,6 +7119,7 @@ titleChange: 'Change Email',
         valueRange: 'Range: {min} - {max}',
         valueOutOfRange: 'Value must be between {min} and {max}',
         valueMustBeInteger: 'Value must be an integer',
+        confirmDelete: 'Delete this redeem code?',
     },
 
     // Extensions
@@ -7352,6 +7381,7 @@ titleChange: 'Change Email',
         perMonth: '/mo',
         perQuarter: '/qtr',
         perYear: '/yr',
+        expired: 'Expired',
     },
 
     // Hosting Access
