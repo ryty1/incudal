@@ -6,6 +6,7 @@ import api from '@/api'
 import { useToast } from '@/stores/toast'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { formatLogAction } from '@/utils/log-action'
+import { formatLogContent } from '@/utils/log-content'
 import type { Log } from '@/types/api'
 
 const props = defineProps<{
@@ -14,6 +15,11 @@ const props = defineProps<{
 }>()
 
 const { t, locale } = useI18n()
+
+// 日志内容是服务端写的英文原文，渲染时翻成中文
+function formatContent(content: string): string {
+  return formatLogContent(content, locale.value)
+}
 const toast = useToast()
 const themeStore = useThemeStore()
 
@@ -223,12 +229,12 @@ onMounted(async () => {
                 <div class="max-w-xs lg:max-w-md">
                   <!-- 短内容直接显示 -->
                   <span v-if="!isContentLong(log.content)" class="text-themed-secondary">
-                    {{ log.content }}
+                    {{ formatContent(log.content) }}
                   </span>
                   <!-- 长内容可展开 -->
                   <template v-else>
                     <div v-if="!expandedRows.has(log.id)" class="flex items-center gap-1.5">
-                      <span class="text-themed-secondary truncate flex-1">{{ log.content.slice(0, 40) }}...</span>
+                      <span class="text-themed-secondary truncate flex-1">{{ formatContent(log.content).slice(0, 40) }}...</span>
                       <button
                         class="flex-shrink-0 p-1 rounded transition-colors"
                         :class="themeStore.isDark ? 'hover:bg-gray-700 text-blue-400' : 'hover:bg-gray-100 text-blue-500'"
@@ -241,7 +247,7 @@ onMounted(async () => {
                       </button>
                     </div>
                     <div v-else class="space-y-2">
-                      <p class="text-themed-secondary whitespace-pre-wrap break-words">{{ log.content }}</p>
+                      <p class="text-themed-secondary whitespace-pre-wrap break-words">{{ formatContent(log.content) }}</p>
                       <button
                         class="text-xs flex items-center gap-1 transition-colors"
                         :class="themeStore.isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-600'"
@@ -362,11 +368,11 @@ onMounted(async () => {
         <!-- Content -->
         <div class="text-sm text-themed-secondary">
           <template v-if="!isContentLong(log.content)">
-            {{ log.content }}
+            {{ formatContent(log.content) }}
           </template>
           <template v-else>
             <div v-if="!expandedRows.has(log.id)">
-              <span>{{ log.content.slice(0, 60) }}...</span>
+              <span>{{ formatContent(log.content).slice(0, 60) }}...</span>
               <button
                 class="ml-1 text-xs"
                 :class="themeStore.isDark ? 'text-blue-400' : 'text-blue-500'"
@@ -376,7 +382,7 @@ onMounted(async () => {
               </button>
             </div>
             <div v-else>
-              <p class="whitespace-pre-wrap break-words">{{ log.content }}</p>
+              <p class="whitespace-pre-wrap break-words">{{ formatContent(log.content) }}</p>
               <button
                 class="mt-1 text-xs"
                 :class="themeStore.isDark ? 'text-blue-400' : 'text-blue-500'"

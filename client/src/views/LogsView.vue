@@ -6,6 +6,7 @@ import api from '@/api'
 import { useToast } from '@/stores/toast'
 import SkeletonLoader from '@/components/SkeletonLoader.vue'
 import { formatLogAction, formatLogModule } from '@/utils/log-action'
+import { formatLogContent } from '@/utils/log-content'
 import type { Log } from '@/types/api'
 
 // 为 KeepAlive include 匹配定义组件名称（必须在所有 import 之后）
@@ -140,6 +141,11 @@ function formatAction(action: string): string {
   return formatLogAction(action, locale.value)
 }
 
+// 内容列：服务端存的是英文原文，这里做中文翻译（历史日志也一并生效）
+function formatContent(content: string): string {
+  return formatLogContent(content, locale.value)
+}
+
 // 切换内容展开/收起
 function toggleContent(logId: number): void {
   if (expandedRows.value.has(logId)) {
@@ -242,12 +248,12 @@ onMounted(async () => {
                 <div class="max-w-xs lg:max-w-md">
                   <!-- 短内容直接显示 -->
                   <span v-if="!isContentLong(log.content)" class="text-themed-secondary">
-                    {{ log.content }}
+                    {{ formatContent(log.content) }}
                   </span>
                   <!-- 长内容可展开 -->
                   <template v-else>
                     <div v-if="!expandedRows.has(log.id)" class="flex items-center gap-1.5">
-                      <span class="text-themed-secondary truncate flex-1">{{ log.content.slice(0, 50) }}...</span>
+                      <span class="text-themed-secondary truncate flex-1">{{ formatContent(log.content).slice(0, 50) }}...</span>
                       <button
                         class="flex-shrink-0 p-1 rounded transition-colors"
                         :class="themeStore.isDark ? 'hover:bg-gray-700 text-blue-400' : 'hover:bg-gray-100 text-blue-500'"
@@ -260,7 +266,7 @@ onMounted(async () => {
                       </button>
                     </div>
                     <div v-else class="space-y-2">
-                      <p class="text-themed-secondary whitespace-pre-wrap break-words">{{ log.content }}</p>
+                      <p class="text-themed-secondary whitespace-pre-wrap break-words">{{ formatContent(log.content) }}</p>
                       <button
                         class="text-xs flex items-center gap-1 transition-colors"
                         :class="themeStore.isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-500 hover:text-blue-600'"
