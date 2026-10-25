@@ -168,11 +168,16 @@ done
 > 容器启动时会自动执行 `prisma migrate deploy`（见 `server/docker-entrypoint.sh`），
 > 新库直接建表，不用手工跑迁移。
 >
-> **时区**：容器默认 `TZ=Asia/Shanghai`（Dockerfile 里已装 tzdata，compose 用
-> `TZ=${TZ:-Asia/Shanghai}`），所以日流量重置、账单、清理这些定时任务按北京时间跑。
-> 想换成别的时区，在 `.env` 里加 `TZ=Asia/Tokyo` 之类即可。
-> 数据库本身仍是 UTC（`timestamp without time zone`，Prisma 按 UTC 读写），
-> 不要改 DB 时区，否则新旧数据会差 8 小时。
+> **时区**：全站中国时区。
+> - 容器 `TZ=Asia/Shanghai`（Dockerfile 已装 tzdata，compose 可用 `TZ=` 覆盖），
+>   日流量重置、账单、清理这些定时任务按北京时间跑
+> - 数据库所有时间列是 `timestamptz(3)`，库默认时区 `Asia/Shanghai`，
+>   直接用 psql 查看到的就是北京时间（`2026-10-25 21:55:15.492+08`）
+> - 但应用连接通过 `DATABASE_URL?...options=-c timezone=UTC` **强制 UTC**：
+>   Prisma 解析带 `+08` 的时间串会丢掉时区信息，按本地时区读会整体差 8 小时。
+>   所以**不要去掉这个 options 参数**
+> - 历史数据不需要平移：`timestamptz` 存的是绝对时刻，转换时用
+>   `AT TIME ZONE 'UTC'` 保证了时刻不变
 
 ### 4. 初始化数据库
 

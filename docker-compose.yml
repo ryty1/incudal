@@ -11,7 +11,9 @@ services:
       - PORT=3000
       # 面板时区：影响 node-cron 定时任务（日流量重置、账单、清理）与日志时间
       - TZ=${TZ:-Asia/Shanghai}
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-incudal}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-incudal}
+      # 库时区是 Asia/Shanghai（方便人看库），但应用连接强制 UTC：
+      # Prisma 解析非 UTC 偏移会丢时区（20:00+08 被读成 20:00Z，整体差 8 小时）
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-incudal}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-incudal}?options=-c%20timezone%3DUTC
       - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379
       - JWT_SECRET=${JWT_SECRET}
       - COOKIE_SECRET=${COOKIE_SECRET:-}

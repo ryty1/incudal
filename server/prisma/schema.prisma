@@ -171,9 +171,9 @@ model RestoreTask {
   originalInstanceName String            @map("original_instance_name")
   originalIncusId      String            @map("original_incus_id")
   error                String?
-  createdAt            DateTime          @default(now()) @map("created_at")
-  startedAt            DateTime?         @map("started_at")
-  finishedAt           DateTime?         @map("finished_at")
+  createdAt            DateTime @db.Timestamptz(3)          @default(now()) @map("created_at")
+  startedAt            DateTime? @db.Timestamptz(3)         @map("started_at")
+  finishedAt           DateTime? @db.Timestamptz(3)         @map("finished_at")
 
   @@index([hostId, status])
   @@index([instanceId])
@@ -202,9 +202,9 @@ model InstanceTask {
   newInstanceId        Int?    @map("new_instance_id") // 克隆后的新实例 ID
 
   error      String?
-  createdAt  DateTime  @default(now()) @map("created_at")
-  startedAt  DateTime? @map("started_at")
-  finishedAt DateTime? @map("finished_at")
+  createdAt  DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
+  startedAt  DateTime? @db.Timestamptz(3) @map("started_at")
+  finishedAt DateTime? @db.Timestamptz(3) @map("finished_at")
 
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
@@ -342,7 +342,7 @@ enum FriendshipStatus {
 // ==================== 用户相关模型 ====================
 
 model User {
-  tgBindChangedAt     DateTime? @map("tg_bind_changed_at")  // 最近一次 TG 解绑/换绑：30 天冷却
+  tgBindChangedAt     DateTime? @db.Timestamptz(3) @map("tg_bind_changed_at")  // 最近一次 TG 解绑/换绑：30 天冷却
   id           Int        @id @default(autoincrement())
   username     String     @unique
   email        String?
@@ -360,8 +360,8 @@ model User {
   twoFactorSecret        String? @map("two_factor_secret")
   twoFactorRecoveryCodes String? @map("two_factor_recovery_codes") // JSON array of encrypted codes
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   // 关系
   quota                UserQuota?
@@ -436,7 +436,7 @@ model User {
 
   // AFF推荐计划
   affBalance       Decimal         @default(0) @map("aff_balance") @db.Decimal(10, 2)  // AFF余额
-  affActivatedAt   DateTime?       @map("aff_activated_at")                            // AFF激活时间
+  affActivatedAt   DateTime? @db.Timestamptz(3)       @map("aff_activated_at")                            // AFF激活时间
   affCodes         AffCode[]
   affLogs          AffLog[]
   affWithdrawals   AffWithdrawal[]
@@ -490,7 +490,7 @@ model UserQuota {
   monthlyTrafficLimit  BigInt?       @map("monthly_traffic_limit") // null = 无限制
   monthlyTrafficUsed   BigInt        @default(0) @map("monthly_traffic_used")
   trafficStatus        TrafficStatus @default(NORMAL) @map("traffic_status")
-  trafficWarningSentAt DateTime?     @map("traffic_warning_sent_at")
+  trafficWarningSentAt DateTime? @db.Timestamptz(3)     @map("traffic_warning_sent_at")
 
   // 流量包扩展 (预留)
   extraTrafficQuota BigInt @default(0) @map("extra_traffic_quota")
@@ -506,10 +506,10 @@ model InviteCode {
   code         String    @unique
   createdBy    Int       @map("created_by")
   usedBy       Int?      @map("used_by")
-  usedAt       DateTime? @map("used_at")
-  expiresAt    DateTime? @map("expires_at")
+  usedAt       DateTime? @db.Timestamptz(3) @map("used_at")
+  expiresAt    DateTime? @db.Timestamptz(3) @map("expires_at")
   costSnapshot Json?     @map("cost_snapshot")
-  createdAt    DateTime  @default(now()) @map("created_at")
+  createdAt    DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
 
   creator User  @relation("CreatedInviteCodes", fields: [createdBy], references: [id])
   user    User? @relation("UsedInviteCodes", fields: [usedBy], references: [id])
@@ -524,7 +524,7 @@ model SshKey {
   name        String
   publicKey   String   @map("public_key")
   fingerprint String
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -542,9 +542,9 @@ model RefreshToken {
   role         UserRole
   ip           String? // 登录 IP
   userAgent    String?  @map("user_agent") // 用户代理
-  createdAt    DateTime @default(now()) @map("created_at")
-  expiresAt    DateTime @map("expires_at") // 过期时间
-  lastActiveAt DateTime @default(now()) @updatedAt @map("last_active_at") // 最后活跃时间
+  createdAt    DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  expiresAt    DateTime @db.Timestamptz(3) @map("expires_at") // 过期时间
+  lastActiveAt DateTime @db.Timestamptz(3) @default(now()) @updatedAt @map("last_active_at") // 最后活跃时间
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -561,7 +561,7 @@ model TokenInvalidation {
   userId        Int      @map("user_id")
   sessionId     String?  @map("session_id") // 会话ID（Refresh Token 前缀），null 表示用户级别的失效
   invalidatedAt Int      @map("invalidated_at") // 失效时间戳（秒级，与 JWT iat 一致）
-  createdAt     DateTime @default(now()) @map("created_at")
+  createdAt     DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -580,9 +580,9 @@ model Friendship {
   friendId   Int              @map("friend_id") // 接收者
   status     FriendshipStatus @default(pending)
   remark     String? // 申请备注
-  createdAt  DateTime         @default(now()) @map("created_at")
-  acceptedAt DateTime?        @map("accepted_at")
-  rejectedAt DateTime?        @map("rejected_at")
+  createdAt  DateTime @db.Timestamptz(3)         @default(now()) @map("created_at")
+  acceptedAt DateTime? @db.Timestamptz(3)        @map("accepted_at")
+  rejectedAt DateTime? @db.Timestamptz(3)        @map("rejected_at")
 
   user   User @relation("FriendshipSent", fields: [userId], references: [id], onDelete: Cascade)
   friend User @relation("FriendshipReceived", fields: [friendId], references: [id], onDelete: Cascade)
@@ -637,13 +637,13 @@ model Host {
   sysctlConfig        String?      @map("sysctl_config") // 自定义内核参数
   // 安装流程
   installToken        String?      @unique @map("install_token")
-  installTokenExpire  DateTime?    @map("install_token_expire")
+  installTokenExpire  DateTime? @db.Timestamptz(3)    @map("install_token_expire")
   isInstalled         Boolean      @default(false) @map("is_installed")
   // 证书下载限制（每次安装操作独立计数）
   certDownloadCount   Int          @default(0) @map("cert_download_count")
-  certDownloadExpire  DateTime?    @map("cert_download_expire")
-  createdAt           DateTime     @default(now()) @map("created_at")
-  updatedAt           DateTime     @updatedAt @map("updated_at")
+  certDownloadExpire  DateTime? @db.Timestamptz(3)    @map("cert_download_expire")
+  createdAt           DateTime @db.Timestamptz(3)     @default(now()) @map("created_at")
+  updatedAt           DateTime @db.Timestamptz(3)     @updatedAt @map("updated_at")
 
   // Caddy 反代配置
   caddyEnabled  Boolean @default(false) @map("caddy_enabled") // 是否已安装 Caddy
@@ -711,17 +711,17 @@ model HostAgent {
   secretHash            String    @map("secret_hash")
   secretEncrypted       String    @map("secret_encrypted")
   installTokenHash      String?   @unique @map("install_token_hash")
-  installTokenExpiresAt DateTime? @map("install_token_expires_at")
-  installTokenUsedAt    DateTime? @map("install_token_used_at")
+  installTokenExpiresAt DateTime? @db.Timestamptz(3) @map("install_token_expires_at")
+  installTokenUsedAt    DateTime? @db.Timestamptz(3) @map("install_token_used_at")
   enabled               Boolean   @default(true)
   status                String    @default("offline")
   version               String?
   capabilities          Json?     @default("[]")
   lastReport            Json?     @default("{}") @map("last_report")
-  lastSeenAt            DateTime? @map("last_seen_at")
+  lastSeenAt            DateTime? @db.Timestamptz(3) @map("last_seen_at")
   lastHeartbeatIp       String?   @map("last_heartbeat_ip")
-  createdAt             DateTime  @default(now()) @map("created_at")
-  updatedAt             DateTime  @updatedAt @map("updated_at")
+  createdAt             DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
+  updatedAt             DateTime @db.Timestamptz(3)  @updatedAt @map("updated_at")
 
   host   Host             @relation(fields: [hostId], references: [id], onDelete: Cascade)
   nonces HostAgentNonce[]
@@ -737,8 +737,8 @@ model HostAgentNonce {
   id        Int      @id @default(autoincrement())
   agentId   String   @map("agent_id")
   nonce     String
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @db.Timestamptz(3) @map("expires_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   agent HostAgent @relation(fields: [agentId], references: [agentId], onDelete: Cascade)
 
@@ -754,8 +754,8 @@ model HostAddressAlias {
   address   String
   kind      HostAddressKind
   source    HostAddressSource
-  createdAt DateTime          @default(now()) @map("created_at")
-  updatedAt DateTime          @updatedAt @map("updated_at")
+  createdAt DateTime @db.Timestamptz(3)          @default(now()) @map("created_at")
+  updatedAt DateTime @db.Timestamptz(3)          @updatedAt @map("updated_at")
 
   host Host @relation("HostAddressAliases", fields: [hostId], references: [id], onDelete: Cascade)
 
@@ -776,7 +776,7 @@ model HostAddressResolutionLog {
   resolvedAddresses Json                   @default("[]") @map("resolved_addresses")
   error             String?
   details           Json?                  @default("{}")
-  createdAt         DateTime               @default(now()) @map("created_at")
+  createdAt         DateTime @db.Timestamptz(3)               @default(now()) @map("created_at")
 
   host Host @relation("HostAddressResolutionLogs", fields: [hostId], references: [id], onDelete: Cascade)
 
@@ -791,9 +791,9 @@ model HostAddressConflict {
   hostBId         Int                       @map("host_b_id")
   address         String
   status          HostAddressConflictStatus @default(active)
-  firstDetectedAt DateTime                  @default(now()) @map("first_detected_at")
-  lastDetectedAt  DateTime                  @updatedAt @map("last_detected_at")
-  resolvedAt      DateTime?                 @map("resolved_at")
+  firstDetectedAt DateTime @db.Timestamptz(3)                  @default(now()) @map("first_detected_at")
+  lastDetectedAt  DateTime @db.Timestamptz(3)                  @updatedAt @map("last_detected_at")
+  resolvedAt      DateTime? @db.Timestamptz(3)                 @map("resolved_at")
 
   hostA Host @relation("HostAddressConflictA", fields: [hostAId], references: [id], onDelete: Cascade)
   hostB Host @relation("HostAddressConflictB", fields: [hostBId], references: [id], onDelete: Cascade)
@@ -813,8 +813,8 @@ model StoragePool {
   purpose     StoragePurpose @default(instance_data)
   description String?
   config      Json?          @default("{}") // 存储原始配置
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
+  createdAt   DateTime @db.Timestamptz(3)       @default(now()) @map("created_at")
+  updatedAt   DateTime @db.Timestamptz(3)       @updatedAt @map("updated_at")
 
   host Host @relation(fields: [hostId], references: [id], onDelete: Cascade)
 
@@ -832,7 +832,7 @@ model PackageHost {
   hostId    Int      @map("host_id")
   storagePoolName String? @map("storage_pool_name")
   trafficMultiplier Decimal @default(1.0) @map("traffic_multiplier") @db.Decimal(8, 3)
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   package Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
   host    Host    @relation(fields: [hostId], references: [id], onDelete: Cascade)
@@ -901,7 +901,7 @@ model Package {
   // 资源释放通知渠道（可选）
   releaseChannelId Int? @map("release_channel_id")
 
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   instances      Instance[]
@@ -977,9 +977,9 @@ model Instance {
 
   // ========== 计费与封停相关字段 ==========
   // 到期时间：null 表示永不到期（免费实例），有值表示付费实例的到期时间
-  expiresAt        DateTime? @map("expires_at")
+  expiresAt        DateTime? @db.Timestamptz(3) @map("expires_at")
   // 封停信息
-  suspendedAt      DateTime? @map("suspended_at")      // 封停时间
+  suspendedAt      DateTime? @db.Timestamptz(3) @map("suspended_at")      // 封停时间
   suspendedBy      Int?      @map("suspended_by")      // 封停操作者（null=系统自动，有值=用户ID）
   suspendReason    String?   @map("suspend_reason")    // 封停原因（expired=到期封停，其他=手动封停原因）
   // 计费价格（从方案复制，支持后续调整）
@@ -989,29 +989,29 @@ model Instance {
   autoRenew        Boolean   @default(false) @map("auto_renew")
   iconBadgeId      String?   @map("icon_badge_id")
   autoRenewAttempts     Int        @default(0) @map("auto_renew_attempts")      // 已尝试次数
-  lastAutoRenewAttemptAt DateTime? @map("last_auto_renew_attempt_at")           // 上次尝试时间
+  lastAutoRenewAttemptAt DateTime? @db.Timestamptz(3) @map("last_auto_renew_attempt_at")           // 上次尝试时间
   // 到期提醒记录
-  expiryNotifiedAt DateTime? @map("expiry_notified_at") // 上次发送到期提醒时间
+  expiryNotifiedAt DateTime? @db.Timestamptz(3) @map("expiry_notified_at") // 上次发送到期提醒时间
   // 乐观锁
   version          Int       @default(0)  // 版本号，用于并发控制
   // IPv6 重新分配冷却
-  lastIpv6ReassignAt DateTime? @map("last_ipv6_reassign_at") // 上次重新分配 IPv6 时间（每实例每天限一次）
+  lastIpv6ReassignAt DateTime? @db.Timestamptz(3) @map("last_ipv6_reassign_at") // 上次重新分配 IPv6 时间（每实例每天限一次）
   // 方案变更冷却
-  lastPlanChangeAt   DateTime? @map("last_plan_change_at")   // 上次变更方案时间（3天冷却期）
+  lastPlanChangeAt   DateTime? @db.Timestamptz(3) @map("last_plan_change_at")   // 上次变更方案时间（3天冷却期）
   // 用户自定义显示顺序；相同顺序时按创建时间倒序
   displayOrder       Int       @default(0) @map("display_order")
 
   // Cloud-init 检测状态
   cloudInitState             String?   @map("cloud_init_state")
   cloudInitSource            String?   @map("cloud_init_source")
-  cloudInitLastCheckedAt     DateTime? @map("cloud_init_last_checked_at")
-  cloudInitCompletedAt       DateTime? @map("cloud_init_completed_at")
-  cloudInitManualCompletedAt DateTime? @map("cloud_init_manual_completed_at")
+  cloudInitLastCheckedAt     DateTime? @db.Timestamptz(3) @map("cloud_init_last_checked_at")
+  cloudInitCompletedAt       DateTime? @db.Timestamptz(3) @map("cloud_init_completed_at")
+  cloudInitManualCompletedAt DateTime? @db.Timestamptz(3) @map("cloud_init_manual_completed_at")
   cloudInitManualCompletedBy Int?      @map("cloud_init_manual_completed_by")
 
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  lastSyncedAt DateTime? @map("last_synced_at") // 最后与 Incus 同步时间
+  createdAt    DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
+  updatedAt    DateTime @db.Timestamptz(3)  @updatedAt @map("updated_at")
+  lastSyncedAt DateTime? @db.Timestamptz(3) @map("last_synced_at") // 最后与 Incus 同步时间
 
   user            User               @relation(fields: [userId], references: [id])
   host            Host               @relation(fields: [hostId], references: [id])
@@ -1073,7 +1073,7 @@ model IpAddress {
   instanceId Int      @map("instance_id")
   instance   Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   @@index([address])
   @@index([hostId])
@@ -1092,7 +1092,7 @@ model Ipv6Subnet {
   instanceId Int      @map("instance_id")
   instance   Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   @@index([instanceId])
   @@map("ipv6_subnets")
@@ -1106,7 +1106,7 @@ model PortMapping {
   publicPort  Int      @map("public_port")
   privatePort Int      @map("private_port")
   remark      String?
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   host     Host     @relation(fields: [hostId], references: [id])
@@ -1126,7 +1126,7 @@ model Snapshot {
   description String?
   stateful    Boolean  @default(false)
   size        Int      @default(0)
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
@@ -1142,8 +1142,8 @@ model Backup {
   description String?
   size        Int          @default(0)
   status      BackupStatus @default(creating)
-  createdAt   DateTime     @default(now()) @map("created_at")
-  expiresAt   DateTime?    @map("expires_at")
+  createdAt   DateTime @db.Timestamptz(3)     @default(now()) @map("created_at")
+  expiresAt   DateTime? @db.Timestamptz(3)    @map("expires_at")
 
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
@@ -1157,10 +1157,10 @@ model BackupPolicy {
   instanceId      Int       @unique @map("instance_id")
   enabled         Boolean   @default(false)
   intervalMinutes Int       @default(1440) @map("interval_minutes") // 默认24小时
-  lastRunAt       DateTime? @map("last_run_at")
-  nextRunAt       DateTime? @map("next_run_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  lastRunAt       DateTime? @db.Timestamptz(3) @map("last_run_at")
+  nextRunAt       DateTime? @db.Timestamptz(3) @map("next_run_at")
+  createdAt       DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
+  updatedAt       DateTime @db.Timestamptz(3)  @updatedAt @map("updated_at")
 
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
@@ -1173,10 +1173,10 @@ model SnapshotPolicy {
   instanceId      Int       @unique @map("instance_id")
   enabled         Boolean   @default(false)
   intervalMinutes Int       @default(360) @map("interval_minutes") // 默认6小时
-  lastRunAt       DateTime? @map("last_run_at")
-  nextRunAt       DateTime? @map("next_run_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  lastRunAt       DateTime? @db.Timestamptz(3) @map("last_run_at")
+  nextRunAt       DateTime? @db.Timestamptz(3) @map("next_run_at")
+  createdAt       DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
+  updatedAt       DateTime @db.Timestamptz(3)  @updatedAt @map("updated_at")
 
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
@@ -1194,7 +1194,7 @@ model NotificationChannel {
   config    Json
   enabled   Boolean                 @default(true)
   isGlobal  Boolean                 @default(false) @map("is_global") // 管理员创建的全局渠道，对所有托管用户开放
-  createdAt DateTime                @default(now()) @map("created_at")
+  createdAt DateTime @db.Timestamptz(3)                @default(now()) @map("created_at")
 
   user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   logs     NotificationLog[]
@@ -1211,7 +1211,7 @@ model NotificationLog {
   message   String
   status    NotificationLogStatus
   error     String?
-  createdAt DateTime              @default(now()) @map("created_at")
+  createdAt DateTime @db.Timestamptz(3)              @default(now()) @map("created_at")
 
   channel NotificationChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
@@ -1226,8 +1226,8 @@ model OAuthConfig {
   clientId     String        @map("client_id")
   clientSecret String        @map("client_secret")
   enabled      Boolean       @default(false)
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
+  createdAt    DateTime @db.Timestamptz(3)      @default(now()) @map("created_at")
+  updatedAt    DateTime @db.Timestamptz(3)      @updatedAt @map("updated_at")
 
   @@map("oauth_configs")
 }
@@ -1242,8 +1242,8 @@ model UserOAuthBinding {
   providerAvatar   String?       @map("provider_avatar")
   accessToken      String?       @map("access_token")
   refreshToken     String?       @map("refresh_token")
-  createdAt        DateTime      @default(now()) @map("created_at")
-  updatedAt        DateTime      @updatedAt @map("updated_at")
+  createdAt        DateTime @db.Timestamptz(3)      @default(now()) @map("created_at")
+  updatedAt        DateTime @db.Timestamptz(3)      @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1261,8 +1261,8 @@ model UserTelegramBinding {
   telegramUsername String?  @map("telegram_username")
   firstName        String?  @map("first_name")
   lastName         String?  @map("last_name")
-  boundAt          DateTime @default(now()) @map("bound_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  boundAt          DateTime @db.Timestamptz(3) @default(now()) @map("bound_at")
+  updatedAt        DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1273,9 +1273,9 @@ model TelegramBindToken {
   id        Int       @id @default(autoincrement())
   userId    Int       @map("user_id")
   tokenHash String    @unique @map("token_hash")
-  expiresAt DateTime  @map("expires_at")
-  usedAt    DateTime? @map("used_at")
-  createdAt DateTime  @default(now()) @map("created_at")
+  expiresAt DateTime @db.Timestamptz(3)  @map("expires_at")
+  usedAt    DateTime? @db.Timestamptz(3) @map("used_at")
+  createdAt DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1295,8 +1295,8 @@ model HelpArticle {
   published Boolean  @default(true)
   pinned    Boolean  @default(false) // 是否置顶，置顶文章会显示在用户后台首页
   createdBy Int?     @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   creator User? @relation("CreatedArticles", fields: [createdBy], references: [id], onDelete: SetNull)
 
@@ -1312,8 +1312,8 @@ model SystemConfig {
   type        String   @default("string") // string, number, boolean, json
   label       String?
   description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt   DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   @@map("system_configs")
 }
@@ -1326,7 +1326,7 @@ model TrafficSnapshot {
   instanceId Int      @unique @map("instance_id")
   rxRaw      BigInt   @map("rx_raw") // 上次采集的原始值
   txRaw      BigInt   @map("tx_raw")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  updatedAt  DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
@@ -1367,8 +1367,8 @@ model StorageConfig {
   extra Json?
 
   isDefault Boolean  @default(false) @map("is_default")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   uploadTasks BackupUploadTask[]
@@ -1395,9 +1395,9 @@ model BackupUploadTask {
   fileSize       BigInt? @map("file_size")
   error          String?
 
-  createdAt  DateTime  @default(now()) @map("created_at")
-  startedAt  DateTime? @map("started_at")
-  finishedAt DateTime? @map("finished_at")
+  createdAt  DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
+  startedAt  DateTime? @db.Timestamptz(3) @map("started_at")
+  finishedAt DateTime? @db.Timestamptz(3) @map("finished_at")
 
   storageConfig StorageConfig @relation(fields: [storageConfigId], references: [id], onDelete: Cascade)
 
@@ -1418,7 +1418,7 @@ model Log {
   action     String
   content    String
   result     String
-  createdAt  DateTime @default(now()) @map("created_at")
+  createdAt  DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   instance Instance? @relation(fields: [instanceId], references: [id], onDelete: SetNull)
@@ -1445,8 +1445,8 @@ model InstanceAuditRule {
   caseSensitive  Boolean  @default(false) @map("case_sensitive")
   recommendation String?  @db.Text
   enabled        Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt      DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   host      Host? @relation(fields: [hostId], references: [id], onDelete: Cascade)
   createdBy User  @relation("InstanceAuditRuleCreator", fields: [createdById], references: [id], onDelete: Cascade)
@@ -1471,8 +1471,8 @@ model InstanceAuditBuiltinRuleOverride {
   caseSensitive  Boolean  @default(false) @map("case_sensitive")
   recommendation String?  @db.Text
   enabled        Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt      DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   host      Host @relation(fields: [hostId], references: [id], onDelete: Cascade)
   createdBy User @relation("InstanceAuditBuiltinRuleOverrideCreator", fields: [createdById], references: [id], onDelete: Cascade)
@@ -1494,9 +1494,9 @@ model InstanceAuditIgnore {
   scope       String    @default("instance")
   reason      String?   @db.Text
   enabled     Boolean   @default(true)
-  expiresAt   DateTime? @map("expires_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  expiresAt   DateTime? @db.Timestamptz(3) @map("expires_at")
+  createdAt   DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
+  updatedAt   DateTime @db.Timestamptz(3)  @updatedAt @map("updated_at")
 
   host      Host      @relation(fields: [hostId], references: [id], onDelete: Cascade)
   instance  Instance? @relation(fields: [instanceId], references: [id], onDelete: Cascade)
@@ -1524,7 +1524,7 @@ model InstanceAuditScan {
   startupItemCount Int      @default(0) @map("startup_item_count")
   findings         Json     @default("[]")
   error            String?  @db.Text
-  createdAt        DateTime @default(now()) @map("created_at")
+  createdAt        DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   host     Host     @relation(fields: [hostId], references: [id], onDelete: Cascade)
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
@@ -1550,7 +1550,7 @@ model InstanceAuditAction {
   result         String
   stdout         String?  @db.Text
   stderr         String?  @db.Text
-  createdAt      DateTime @default(now()) @map("created_at")
+  createdAt      DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   scan     InstanceAuditScan? @relation(fields: [scanId], references: [id], onDelete: SetNull)
   host     Host      @relation(fields: [hostId], references: [id], onDelete: Cascade)
@@ -1568,8 +1568,8 @@ model EmailVerificationCode {
   id        Int      @id @default(autoincrement())
   email     String
   code      String
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @db.Timestamptz(3) @map("expires_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   @@index([email, code])
   @@index([expiresAt])
@@ -1586,7 +1586,7 @@ model PackageShare {
   sharedToId      Int      @map("shared_to_id") // 共享给谁（必须是好友）
   quotaMultiplier Decimal? @map("quota_multiplier") @db.Decimal(3, 1) // 配额倍数限制，如 0.5, 1.0, 1.5, 2.0，null 表示无限制
   maxInstances    Int?     @map("max_instances") // 最多可开实例数，null 表示无限制
-  createdAt       DateTime @default(now()) @map("created_at")
+  createdAt       DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   package  Package @relation(fields: [packageId], references: [id], onDelete: Cascade)
   owner    User    @relation("PackageShareOwner", fields: [ownerId], references: [id], onDelete: Cascade)
@@ -1619,11 +1619,11 @@ model InstanceTransfer {
   remark       String? // 转移备注
   rejectReason String?        @map("reject_reason")
   fee          Decimal?       @db.Decimal(10, 2) // 转移手续费（元），拒绝时退还
-  createdAt    DateTime       @default(now()) @map("created_at")
-  updatedAt    DateTime       @updatedAt @map("updated_at") // 状态变更时自动更新，用于超时检测
-  acceptedAt   DateTime?      @map("accepted_at")
-  rejectedAt   DateTime?      @map("rejected_at")
-  cancelledAt  DateTime?      @map("cancelled_at")
+  createdAt    DateTime @db.Timestamptz(3)       @default(now()) @map("created_at")
+  updatedAt    DateTime @db.Timestamptz(3)       @updatedAt @map("updated_at") // 状态变更时自动更新，用于超时检测
+  acceptedAt   DateTime? @db.Timestamptz(3)      @map("accepted_at")
+  rejectedAt   DateTime? @db.Timestamptz(3)      @map("rejected_at")
+  cancelledAt  DateTime? @db.Timestamptz(3)      @map("cancelled_at")
 
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   fromUser User     @relation("TransferFrom", fields: [fromUserId], references: [id])
@@ -1668,9 +1668,9 @@ model OperationVerification {
   resourceId    Int?                @map("resource_id") // 资源ID（如实例ID、快照ID等）
   resourceType  String?             @map("resource_type") // 资源类型（instance/snapshot/backup）
   verified      Boolean             @default(false)
-  verifiedAt    DateTime?           @map("verified_at")
-  expiresAt     DateTime            @map("expires_at")
-  createdAt     DateTime            @default(now()) @map("created_at")
+  verifiedAt    DateTime? @db.Timestamptz(3)           @map("verified_at")
+  expiresAt     DateTime @db.Timestamptz(3)            @map("expires_at")
+  createdAt     DateTime @db.Timestamptz(3)            @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1687,8 +1687,8 @@ model DistributedLock {
   id         Int      @id @default(autoincrement())
   lockKey    String   @unique @map("lock_key") // 锁的唯一标识
   ownerId    String   @map("owner_id") // 锁持有者ID（进程ID+随机字符串）
-  acquiredAt DateTime @map("acquired_at") // 获取时间
-  expiresAt  DateTime @map("expires_at") // 过期时间
+  acquiredAt DateTime @db.Timestamptz(3) @map("acquired_at") // 获取时间
+  expiresAt  DateTime @db.Timestamptz(3) @map("expires_at") // 过期时间
 
   @@index([expiresAt]) // 用于清理过期锁
   @@map("distributed_locks")
@@ -1706,8 +1706,8 @@ model SystemImage {
   icon         String // 图标标识，如 "ubuntu"
   sortOrder    Int      @default(0) @map("sort_order")
   hidden       Boolean  @default(false) // 是否隐藏
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt    DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
   allowedHosts HostAllowedImage[]
 
   @@map("system_images")
@@ -1717,8 +1717,8 @@ model HostAllowedImage {
   id        Int         @id @default(autoincrement())
   hostId    Int         @map("host_id")
   imageId   Int         @map("image_id")
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
+  createdAt DateTime @db.Timestamptz(3)    @default(now()) @map("created_at")
+  updatedAt DateTime @db.Timestamptz(3)    @updatedAt @map("updated_at")
   host      Host        @relation(fields: [hostId], references: [id], onDelete: Cascade)
   image     SystemImage @relation(fields: [imageId], references: [id], onDelete: Cascade)
 
@@ -1750,7 +1750,7 @@ model Announcement {
   targetUserId Int? @map("target_user_id") // 私信时的目标用户
   instanceId   Int? @map("instance_id") // 实例私信时的实例 ID
 
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   sender User @relation("AnnouncementSender", fields: [senderId], references: [id], onDelete: Cascade)
   host   Host? @relation("HostAnnouncements", fields: [hostId], references: [id], onDelete: SetNull)
@@ -1771,7 +1771,7 @@ model InboxMessage {
   content   String                       // 消息内容
   isRead    Boolean  @default(false) @map("is_read")
   data      Json?                        // 原始事件数据，用于前端跳转
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1793,10 +1793,10 @@ model HostNotificationEmailTask {
   status      HostNotificationEmailTaskStatus @default(PENDING)
   retryCount  Int                             @default(0) @map("retry_count")
   lastError   String?                         @map("last_error")
-  scheduledFor DateTime                       @map("scheduled_for")
-  createdAt   DateTime                        @default(now()) @map("created_at")
-  startedAt   DateTime?                       @map("started_at")
-  finishedAt  DateTime?                       @map("finished_at")
+  scheduledFor DateTime @db.Timestamptz(3)                       @map("scheduled_for")
+  createdAt   DateTime @db.Timestamptz(3)                        @default(now()) @map("created_at")
+  startedAt   DateTime? @db.Timestamptz(3)                       @map("started_at")
+  finishedAt  DateTime? @db.Timestamptz(3)                       @map("finished_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   host Host @relation(fields: [hostId], references: [id], onDelete: Cascade)
@@ -1821,8 +1821,8 @@ model ProxySite {
   status       ProxySiteStatus @default(pending)
   enabled      Boolean         @default(true)
   error        String? // 错误信息
-  createdAt    DateTime        @default(now()) @map("created_at")
-  updatedAt    DateTime        @updatedAt @map("updated_at")
+  createdAt    DateTime @db.Timestamptz(3)        @default(now()) @map("created_at")
+  updatedAt    DateTime @db.Timestamptz(3)        @updatedAt @map("updated_at")
 
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   host     Host     @relation(fields: [hostId], references: [id], onDelete: Cascade)
@@ -1845,7 +1845,7 @@ model LoginRecord {
   isp       String?  // ISP 服务商
   timezone  String?  // 时区
   userAgent String?  @map("user_agent") // 用户代理
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1884,10 +1884,10 @@ model Ticket {
   priority    TicketPriority @default(normal)
   status      TicketStatus   @default(open)
   
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
-  resolvedAt  DateTime?      @map("resolved_at")
-  closedAt    DateTime?      @map("closed_at")
+  createdAt   DateTime @db.Timestamptz(3)       @default(now()) @map("created_at")
+  updatedAt   DateTime @db.Timestamptz(3)       @updatedAt @map("updated_at")
+  resolvedAt  DateTime? @db.Timestamptz(3)      @map("resolved_at")
+  closedAt    DateTime? @db.Timestamptz(3)      @map("closed_at")
   
   user        User           @relation("TicketCreator", fields: [userId], references: [id], onDelete: Cascade)
   host        Host?          @relation("HostTickets", fields: [hostId], references: [id], onDelete: Cascade)
@@ -1908,7 +1908,7 @@ model TicketMessage {
   senderId    Int      @map("sender_id")    // 发送者（用户或宿主机所有者）
   content     String                         // 消息内容
   isFromOwner Boolean  @default(false) @map("is_from_owner") // 是否来自宿主机所有者
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
   
   ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   sender      User     @relation("TicketMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
@@ -1935,7 +1935,7 @@ model TicketMessageAttachment {
   height          Int?
   url             String
   thumbnailUrl    String?  @map("thumbnail_url")
-  createdAt       DateTime @default(now()) @map("created_at")
+  createdAt       DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   ticket   Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   message  TicketMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
@@ -1965,11 +1965,11 @@ model CheckinRecord {
   redeemCode String         @unique @map("redeem_code") // 兑换码
   codeType   RedeemCodeType @map("code_type")        // 兑换码类型
   codeValue  Int            @map("code_value")       // 兑换码数值
-  expiresAt  DateTime       @map("expires_at")       // 过期时间（3小时）
-  usedAt     DateTime?      @map("used_at")          // 使用时间
+  expiresAt  DateTime @db.Timestamptz(3)       @map("expires_at")       // 过期时间（3小时）
+  usedAt     DateTime? @db.Timestamptz(3)      @map("used_at")          // 使用时间
   usedBy     Int?           @map("used_by")          // 使用者ID
   usedFor    Int?           @map("used_for")         // 使用的实例ID
-  createdAt  DateTime       @default(now()) @map("created_at")
+  createdAt  DateTime @db.Timestamptz(3)       @default(now()) @map("created_at")
 
   user       User      @relation("CheckinRecords", fields: [userId], references: [id], onDelete: Cascade)
   usedByUser User?     @relation("RedeemRecords", fields: [usedBy], references: [id], onDelete: SetNull)
@@ -1985,8 +1985,8 @@ model CheckinRecord {
 model CheckinStats {
   id                   Int       @id @default(autoincrement())
   userId               Int       @unique @map("user_id")
-  lastCheckinDate      DateTime? @map("last_checkin_date")       // 最后签到日期
-  lastRedeemDate       DateTime? @map("last_redeem_date")        // 最后兑换日期（签到码专用）
+  lastCheckinDate      DateTime? @db.Timestamptz(3) @map("last_checkin_date")       // 最后签到日期
+  lastRedeemDate       DateTime? @db.Timestamptz(3) @map("last_redeem_date")        // 最后兑换日期（签到码专用）
   consecutiveOthersUse Int       @default(0) @map("consecutive_others_use") // 连续被他人使用天数
   selfOnlyMode         Boolean   @default(false) @map("self_only_mode")     // 是否只能自己使用
 
@@ -2007,11 +2007,11 @@ model RedeemCode {
   codeValue   Int            @map("code_value")             // 资源数值
   maxUses     Int            @default(1) @map("max_uses")   // 最大使用次数
   usedCount   Int            @default(0) @map("used_count") // 已使用次数
-  expiresAt   DateTime?      @map("expires_at")             // 过期时间，null=永不过期
+  expiresAt   DateTime? @db.Timestamptz(3)      @map("expires_at")             // 过期时间，null=永不过期
   enabled     Boolean        @default(true)                 // 是否启用
   remark      String?                                       // 备注
   batchId     String?        @map("batch_id")               // 批次ID，同批次码每用户只能用一张
-  createdAt   DateTime       @default(now()) @map("created_at")
+  createdAt   DateTime @db.Timestamptz(3)       @default(now()) @map("created_at")
 
   host        Host             @relation(fields: [hostId], references: [id], onDelete: Cascade)
   createdBy   User             @relation("RedeemCodesCreated", fields: [createdById], references: [id], onDelete: Cascade)
@@ -2031,7 +2031,7 @@ model RedeemCodeUsage {
   userId       Int      @map("user_id")         // 使用者
   instanceId   Int      @map("instance_id")     // 应用到的实例
   batchId      String?  @map("batch_id")        // 批次ID（冗余存储，用于唯一约束）
-  usedAt       DateTime @default(now()) @map("used_at")
+  usedAt       DateTime @db.Timestamptz(3) @default(now()) @map("used_at")
 
   redeemCode RedeemCode @relation(fields: [redeemCodeId], references: [id], onDelete: Cascade)
   user       User       @relation("RedeemCodeUsages", fields: [userId], references: [id], onDelete: Cascade)
@@ -2066,10 +2066,10 @@ model BotPromoCode {
   reason         String?                                  // 备注
   packageId      Int?      @map("package_id")             // 券绑定的套餐：核销时与实例套餐精确比对
   hostId         Int?      @map("host_id")                // 券绑定的节点：核销时与实例节点精确比对，且该节点必须在线
-  usedAt         DateTime? @map("used_at")
+  usedAt         DateTime? @db.Timestamptz(3) @map("used_at")
   usedInstanceId Int?      @map("used_instance_id")       // 核销时用掉的实例
-  expiresAt      DateTime  @map("expires_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
+  expiresAt      DateTime @db.Timestamptz(3)  @map("expires_at")
+  createdAt      DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
 
   @@index([userId, status])
   @@index([status, expiresAt])
@@ -2082,7 +2082,7 @@ model BotPromoCode {
 // 用于排查「某客户明明在群里却被判不在」这类问题（对应魔方插件的 guard_runs / guard_run_items）。
 model BotGuardLog {
   id             Int       @id @default(autoincrement())
-  runAt          DateTime  @default(now()) @map("run_at")
+  runAt          DateTime @db.Timestamptz(3)  @default(now()) @map("run_at")
   chatId         BigInt?   @map("chat_id")
   source         String    @default("bot")                // bot | manual
   total          Int       @default(0)                    // 本次同步的绑定数
@@ -2095,7 +2095,7 @@ model BotGuardLog {
   runId          String?   @map("run_id")           // 与 guard_enforce_jobs.run_id 关联
   details        Json?                              // 本次巡检的成员明细（每人在群状态 + 群内权限）
   enforced       Json?                              // 本次守护处置清单（封停/销毁了哪些实例）
-  createdAt      DateTime  @default(now()) @map("created_at")
+  createdAt      DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
 
   @@index([createdAt(sort: Desc)])
   @@index([runId])
@@ -2117,8 +2117,8 @@ model GuardEnforceJob {
   unbound        Json?
   failed         Json?
   error          String?
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @default(now()) @map("updated_at")
+  createdAt      DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
+  updatedAt      DateTime @db.Timestamptz(3)  @default(now()) @map("updated_at")
 
   @@index([runId])
   @@index([createdAt(sort: Desc)])
@@ -2135,8 +2135,8 @@ model CustomInitCommand {
   distros     String   // JSON数组，适配的发行版 ["ubuntu","alpine","all"]
   description String?  // 备注说明
   enabled     Boolean  @default(true) // 是否启用
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt   DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2151,8 +2151,8 @@ model TerminalSavedCommand {
   name        String
   command     String   @db.Text
   description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdAt   DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt   DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2176,7 +2176,7 @@ model BalanceLog {
   instanceId Int?    @map("instance_id") // 关联实例
   remark     String?                      // 备注
 
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2211,8 +2211,8 @@ model PaymentProvider {
   maxAmount Decimal? @map("max_amount") @db.Decimal(10, 2)              // 最大充值金额
 
   sortOrder Int      @default(0) @map("sort_order") // 排序
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   rechargeRecords RechargeRecord[]
 
@@ -2241,7 +2241,7 @@ model RechargeRecord {
 
   // 回调信息
   callbackData Json?     @map("callback_data") // 支付回调原始数据
-  callbackAt   DateTime? @map("callback_at")
+  callbackAt   DateTime? @db.Timestamptz(3) @map("callback_at")
   providerConfigSnapshot String? @map("provider_config_snapshot") // 订单创建时的支付渠道配置快照（加密）
   paymentDetails        Json?    @map("payment_details")          // 结构化支付详情（币种/网络/txid等）
 
@@ -2252,10 +2252,10 @@ model RechargeRecord {
   ip        String?
   userAgent String? @map("user_agent")
 
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  expiredAt   DateTime? @map("expired_at")   // 订单过期时间（按支付渠道发票有效期）
-  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
+  updatedAt   DateTime @db.Timestamptz(3)  @updatedAt @map("updated_at")
+  expiredAt   DateTime? @db.Timestamptz(3) @map("expired_at")   // 订单过期时间（按支付渠道发票有效期）
+  completedAt DateTime? @db.Timestamptz(3) @map("completed_at")
 
   user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   provider PaymentProvider @relation(fields: [providerId], references: [id])
@@ -2277,9 +2277,9 @@ model RechargeCard {
   amount           Decimal  @db.Decimal(10, 2)
   batchNo          String   @map("batch_no")
   createdById      Int?     @map("created_by_id")
-  createdAt        DateTime @default(now()) @map("created_at")
+  createdAt        DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
   usedById         Int?     @map("used_by_id")
-  usedAt           DateTime? @map("used_at")
+  usedAt           DateTime? @db.Timestamptz(3) @map("used_at")
   rechargeRecordId Int?     @unique @map("recharge_record_id")
 
   createdBy      User?           @relation("RechargeCardsCreated", fields: [createdById], references: [id], onDelete: SetNull)
@@ -2306,8 +2306,8 @@ model VipLevelRule {
   minHostingIncome    Decimal?              @map("min_hosting_income") @db.Decimal(10, 2)
   minHostingInstances Int?                  @map("min_hosting_instances")
   benefits            Json                  @default("{}")
-  createdAt           DateTime              @default(now()) @map("created_at")
-  updatedAt           DateTime              @updatedAt @map("updated_at")
+  createdAt           DateTime @db.Timestamptz(3)              @default(now()) @map("created_at")
+  updatedAt           DateTime @db.Timestamptz(3)              @updatedAt @map("updated_at")
 
   @@unique([type, level])
   @@index([type, enabled])
@@ -2324,8 +2324,8 @@ model VipBenefitReward {
   sortOrder   Int                  @default(0) @map("sort_order")
   enabled     Boolean              @default(true)
   config      Json                 @default("{}")
-  createdAt   DateTime             @default(now()) @map("created_at")
-  updatedAt   DateTime             @updatedAt @map("updated_at")
+  createdAt   DateTime @db.Timestamptz(3)             @default(now()) @map("created_at")
+  updatedAt   DateTime @db.Timestamptz(3)             @updatedAt @map("updated_at")
 
   claims VipBenefitClaim[]
 
@@ -2342,8 +2342,8 @@ model VipBenefitClaim {
   status      VipBenefitClaimStatus
   claimNo     Int                   @map("claim_no")
   snapshot    Json                  @default("{}")
-  deliveredAt DateTime?             @map("delivered_at")
-  createdAt   DateTime              @default(now()) @map("created_at")
+  deliveredAt DateTime? @db.Timestamptz(3)             @map("delivered_at")
+  createdAt   DateTime @db.Timestamptz(3)              @default(now()) @map("created_at")
 
   user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   reward VipBenefitReward @relation(fields: [rewardId], references: [id], onDelete: Cascade)
@@ -2363,7 +2363,7 @@ model PaymentCallback {
   tradeNo    String?  @map("trade_no")        // 第三方交易号
   callbackIp String?  @map("callback_ip")     // 回调IP
   processed  Boolean  @default(true)          // 是否已处理
-  createdAt  DateTime @default(now()) @map("created_at")
+  createdAt  DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   @@unique([providerId, orderNo, tradeNo])    // 联合唯一索引防重放
   @@index([createdAt])                        // 用于定期清理
@@ -2408,8 +2408,8 @@ model PackagePlan {
   // ========== SLA保证（可选） ==========
   slaGuarantee Decimal? @map("sla_guarantee") @db.Decimal(5, 2) // SLA保证百分比，1-100，两位小数，null=不显示
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   // 关系
   package   Package    @relation(fields: [packageId], references: [id], onDelete: Cascade)
@@ -2432,14 +2432,14 @@ model InstanceBillingRecord {
   months Int               @default(1)        // 购买/续费月数
 
   // 计费周期
-  periodStart DateTime @map("period_start") // 计费开始时间
-  periodEnd   DateTime @map("period_end")   // 计费结束时间
+  periodStart DateTime @db.Timestamptz(3) @map("period_start") // 计费开始时间
+  periodEnd   DateTime @db.Timestamptz(3) @map("period_end")   // 计费结束时间
 
   // 关联
   balanceLogId Int? @map("balance_log_id") // 关联余额日志
 
   remark    String?
-  createdAt DateTime @default(now()) @map("created_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
 
@@ -2461,7 +2461,7 @@ model AffCode {
   enabled         Boolean  @default(true)
   usedCount       Int      @default(0) @map("used_count")         // 使用次数
   totalEarnings   Decimal  @default(0) @map("total_earnings") @db.Decimal(10, 2) // 总收益
-  createdAt       DateTime @default(now()) @map("created_at")
+  createdAt       DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   packagePlan PackagePlan? @relation(fields: [packagePlanId], references: [id], onDelete: Cascade)
@@ -2480,7 +2480,7 @@ model AffBinding {
   id          Int      @id @default(autoincrement())
   instanceId  Int      @unique @map("instance_id")  // 一个实例只能绑定一个优惠码
   affCodeId   Int      @map("aff_code_id")
-  createdAt   DateTime @default(now()) @map("created_at")
+  createdAt   DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
   affCode  AffCode  @relation(fields: [affCodeId], references: [id], onDelete: Cascade)
@@ -2494,7 +2494,7 @@ model MailSubscriptionAffBinding {
   id                 Int      @id @default(autoincrement())
   mailSubscriptionId Int      @unique @map("mail_subscription_id")
   affCodeId          Int      @map("aff_code_id")
-  createdAt          DateTime @default(now()) @map("created_at")
+  createdAt          DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   mailSubscription MailSubscription @relation(fields: [mailSubscriptionId], references: [id], onDelete: Cascade)
   affCode          AffCode          @relation(fields: [affCodeId], references: [id], onDelete: Cascade)
@@ -2516,7 +2516,7 @@ model AffLog {
   balanceBefore        Decimal    @map("balance_before") @db.Decimal(10, 2)
   balanceAfter         Decimal    @map("balance_after") @db.Decimal(10, 2)
   remark               String?
-  createdAt            DateTime   @default(now()) @map("created_at")
+  createdAt            DateTime @db.Timestamptz(3)   @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   affCode          AffCode?          @relation(fields: [affCodeId], references: [id], onDelete: SetNull)
@@ -2537,8 +2537,8 @@ model AffWithdrawal {
   status        AffWithdrawalStatus @default(pending)
   rejectReason  String?             @map("reject_reason")
   reviewedBy    Int?                @map("reviewed_by")  // 审核管理员ID
-  reviewedAt    DateTime?           @map("reviewed_at")
-  createdAt     DateTime            @default(now()) @map("created_at")
+  reviewedAt    DateTime? @db.Timestamptz(3)           @map("reviewed_at")
+  createdAt     DateTime @db.Timestamptz(3)            @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2580,10 +2580,10 @@ model UserPoints {
   points            Int       @default(0)                      // 当前积分
   totalEarned       Int       @default(0) @map("total_earned") // 累计获得
   totalSpent        Int       @default(0) @map("total_spent")  // 累计消耗
-  lastConvertedAt   DateTime? @map("last_converted_at")        // 上次兑换时间
+  lastConvertedAt   DateTime? @db.Timestamptz(3) @map("last_converted_at")        // 上次兑换时间
   convertedConsume  Decimal   @default(0) @db.Decimal(10, 2) @map("converted_consume") // 已兑换的消费金额
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  createdAt         DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
+  updatedAt         DateTime @db.Timestamptz(3)  @updatedAt @map("updated_at")
 
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2600,7 +2600,7 @@ model PointsLog {
   pointsAfter  Int           @map("points_after")
   relatedId    Int?          @map("related_id")                      // 关联ID（抽奖记录ID等）
   remark       String?
-  createdAt    DateTime      @default(now()) @map("created_at")
+  createdAt    DateTime @db.Timestamptz(3)      @default(now()) @map("created_at")
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2618,8 +2618,8 @@ model BadgeSeries {
   sourceLabel   String?  @map("source_label")
   displayOrder  Int      @default(0) @map("display_order")
   isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt     DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   badges Badge[]
 
@@ -2641,8 +2641,8 @@ model Badge {
   assetUrlLight String?  @map("asset_url_light")
   displayOrder  Int      @default(0) @map("display_order")
   isActive      Boolean  @default(true) @map("is_active")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt     DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   series             BadgeSeries          @relation(fields: [seriesId], references: [id], onDelete: Restrict)
 
@@ -2658,9 +2658,9 @@ model UserBadgeOwnership {
   source            UserBadgeSource         @default(draw)
   applicationTarget BadgeApplicationTarget? @map("application_target")
   appliedInstanceId Int?                    @map("applied_instance_id")
-  appliedAt         DateTime?               @map("applied_at")
-  createdAt         DateTime                @default(now()) @map("created_at")
-  updatedAt         DateTime                @updatedAt @map("updated_at")
+  appliedAt         DateTime? @db.Timestamptz(3)               @map("applied_at")
+  createdAt         DateTime @db.Timestamptz(3)                @default(now()) @map("created_at")
+  updatedAt         DateTime @db.Timestamptz(3)                @updatedAt @map("updated_at")
 
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   appliedInstance Instance? @relation("InstanceAppliedBadgeOwnerships", fields: [appliedInstanceId], references: [id], onDelete: SetNull)
@@ -2701,11 +2701,11 @@ model Lottery {
   description     String?                                            // 描述
   costPoints      Int       @map("cost_points")                      // 每次抽奖消耗积分
   isActive        Boolean   @default(true) @map("is_active")         // 是否启用
-  startAt         DateTime? @map("start_at")                         // 开始时间（可选）
-  endAt           DateTime? @map("end_at")                           // 结束时间（可选）
+  startAt         DateTime? @db.Timestamptz(3) @map("start_at")                         // 开始时间（可选）
+  endAt           DateTime? @db.Timestamptz(3) @map("end_at")                           // 结束时间（可选）
   totalDraws      Int       @default(0) @map("total_draws")          // 总抽奖次数
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdAt       DateTime @db.Timestamptz(3)  @default(now()) @map("created_at")
+  updatedAt       DateTime @db.Timestamptz(3)  @updatedAt @map("updated_at")
   createdBy       Int       @map("created_by")                       // 创建者管理员ID
 
   prizes             LotteryPrize[]
@@ -2726,7 +2726,7 @@ model LotteryPrize {
   totalQuantity   Int?             @map("total_quantity")            // 总数量（null表示无限）
   remainQuantity  Int?             @map("remain_quantity")           // 剩余数量
   displayOrder    Int              @default(0) @map("display_order") // 显示顺序
-  createdAt       DateTime         @default(now()) @map("created_at")
+  createdAt       DateTime @db.Timestamptz(3)         @default(now()) @map("created_at")
 
   // 实例奖励专用字段
   instanceDesc    String?          @map("instance_desc")             // 实例描述（如：1核1G 30天）
@@ -2749,11 +2749,11 @@ model LotteryRecord {
   prizeName        String              @map("prize_name")             // 中奖时的奖品名称（快照）
   status           LotteryRecordStatus @default(delivered)
   pointsSpent      Int                 @map("points_spent")           // 消耗的积分
-  deliveredAt      DateTime?           @map("delivered_at")           // 发放时间
+  deliveredAt      DateTime? @db.Timestamptz(3)           @map("delivered_at")           // 发放时间
   deliveredBy      Int?                @map("delivered_by")           // 发放管理员（实例奖励）
   ticketId         Int?                @map("ticket_id")              // 关联工单ID（实例奖励）
   notificationSent Boolean             @default(false) @map("notification_sent")
-  createdAt        DateTime            @default(now()) @map("created_at")
+  createdAt        DateTime @db.Timestamptz(3)            @default(now()) @map("created_at")
 
   lottery Lottery      @relation(fields: [lotteryId], references: [id], onDelete: Cascade)
   prize   LotteryPrize @relation(fields: [prizeId], references: [id], onDelete: Cascade)
@@ -2780,8 +2780,8 @@ model LotteryNotificationConfig {
   notifyInstance  Boolean  @default(true) @map("notify_instance")    // 实例中奖通知
   // 注意：积分中奖不通知
 
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  createdAt       DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt       DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   lottery         Lottery  @relation(fields: [lotteryId], references: [id], onDelete: Cascade)
 
@@ -2809,7 +2809,7 @@ model UserResourcePool {
   memory    Int      @default(0)  // 内存额度 (MB)
   disk      Int      @default(0)  // 硬盘额度 (MB)
   traffic   BigInt   @default(0)  // 流量额度 (GB)
-  updatedAt DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -2825,7 +2825,7 @@ model ResourcePoolLog {
   amount       Int                // 正数=获得，负数=消耗
   instanceId   Int?               @map("instance_id")   // 应用到的实例
   remark       String?
-  createdAt    DateTime           @default(now()) @map("created_at")
+  createdAt    DateTime @db.Timestamptz(3)           @default(now()) @map("created_at")
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   instance Instance? @relation(fields: [instanceId], references: [id], onDelete: SetNull)
@@ -2842,7 +2842,7 @@ model UserDestroyRecord {
   hostId       Int      @map("host_id")       // 节点ID（用于90天节点冷却期）
   instanceId   Int      @map("instance_id")   // 被销毁的实例ID
   instanceName String   @map("instance_name") // 实例名称（备份，因实例已删除）
-  destroyedAt  DateTime @default(now()) @map("destroyed_at")
+  destroyedAt  DateTime @db.Timestamptz(3) @default(now()) @map("destroyed_at")
   refundAmount Decimal  @db.Decimal(10, 2) @map("refund_amount") // 实际退款金额
   feeAmount    Decimal  @db.Decimal(10, 2) @map("fee_amount")    // 手续费金额
   isFirstTime  Boolean  @map("is_first_time") // 是否首次销毁（首次免手续费）
@@ -2921,8 +2921,8 @@ model MailSource {
   smarterMailUrl String  @map("smartermail_url") // SmarterMail API 地址
   enabled       Boolean  @default(true)
   sortOrder     Int      @default(0) @map("sort_order")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  createdAt     DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt     DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   plans         MailPlan[]
   subscriptions MailSubscription[]
@@ -2943,8 +2943,8 @@ model MailPlan {
   price         Decimal          @db.Decimal(10, 2)    // 价格
   enabled       Boolean          @default(true)
   sortOrder     Int              @default(0) @map("sort_order")
-  createdAt     DateTime         @default(now()) @map("created_at")
-  updatedAt     DateTime         @updatedAt @map("updated_at")
+  createdAt     DateTime @db.Timestamptz(3)         @default(now()) @map("created_at")
+  updatedAt     DateTime @db.Timestamptz(3)         @updatedAt @map("updated_at")
 
   source        MailSource       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   subscriptions MailSubscription[]
@@ -2962,10 +2962,10 @@ model MailSubscription {
   status       MailSubscriptionStatus @default(active)
   domainLimit  Int                    @map("domain_limit")  // 冗余存储购买时的限制
   diskLimitGb  Int                    @map("disk_limit_gb") // 冗余存储购买时的限制
-  expiresAt    DateTime               @map("expires_at")
+  expiresAt    DateTime @db.Timestamptz(3)               @map("expires_at")
   autoRenew    Boolean                @default(false) @map("auto_renew")
-  createdAt    DateTime               @default(now()) @map("created_at")
-  updatedAt    DateTime               @updatedAt @map("updated_at")
+  createdAt    DateTime @db.Timestamptz(3)               @default(now()) @map("created_at")
+  updatedAt    DateTime @db.Timestamptz(3)               @updatedAt @map("updated_at")
 
   user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   source       MailSource             @relation(fields: [sourceId], references: [id], onDelete: Cascade)
@@ -2989,9 +2989,9 @@ model MailDomain {
   adminUsername  String?          @map("admin_username") // CraneMail 返回的管理员账号
   adminPassword  String?          @map("admin_password") // CraneMail 返回的管理员密码（加密存储）
   diskUsedMb     Int              @default(0) @map("disk_used_mb") // 已用空间 MB
-  verifiedAt     DateTime?        @map("verified_at")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  verifiedAt     DateTime? @db.Timestamptz(3)        @map("verified_at")
+  createdAt      DateTime @db.Timestamptz(3)         @default(now()) @map("created_at")
+  updatedAt      DateTime @db.Timestamptz(3)         @updatedAt @map("updated_at")
 
   subscription   MailSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   source         MailSource       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
@@ -3012,8 +3012,8 @@ model MailAccount {
   diskLimitMb Int         @default(2048) @map("disk_limit_mb") // 邮箱容量 MB
   diskUsedMb  Int         @default(0) @map("disk_used_mb")     // 已用空间 MB
   isAdmin     Boolean     @default(false) @map("is_admin")     // 是否为域管理员
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
+  createdAt   DateTime @db.Timestamptz(3)    @default(now()) @map("created_at")
+  updatedAt   DateTime @db.Timestamptz(3)    @updatedAt @map("updated_at")
 
   domain      MailDomain  @relation(fields: [domainId], references: [id], onDelete: Cascade)
 
@@ -3030,7 +3030,7 @@ model HostingBalanceLog {
   actionType HostingActionType?  @map("action_type") // 具体操作类型（开通/续费/升级/销毁等）
   amount     Decimal             @db.Decimal(10, 2) // 金额（正数）
   frozen     Boolean             @default(true)     // 是否冻结状态
-  unfreezeAt DateTime?           @map("unfreeze_at") // 解冻时间
+  unfreezeAt DateTime? @db.Timestamptz(3)           @map("unfreeze_at") // 解冻时间
   relatedId  Int?                @map("related_id") // 关联ID（实例ID/提现ID）
   remark     String?
 
@@ -3043,7 +3043,7 @@ model HostingBalanceLog {
   snapshotPackageName  String?   @map("snapshot_package_name")
   snapshotPlanName     String?   @map("snapshot_plan_name")
 
-  createdAt  DateTime            @default(now()) @map("created_at")
+  createdAt  DateTime @db.Timestamptz(3)            @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -3064,9 +3064,9 @@ model HostingWithdrawal {
   usdtAddress  String?          @map("usdt_address") // USDT地址（仅USDT提现）
   status       WithdrawalStatus @default(pending)
   rejectReason String?          @map("reject_reason")
-  processedAt  DateTime?        @map("processed_at")
+  processedAt  DateTime? @db.Timestamptz(3)        @map("processed_at")
   processedBy  Int?             @map("processed_by") // 处理的管理员ID
-  createdAt    DateTime         @default(now()) @map("created_at")
+  createdAt    DateTime @db.Timestamptz(3)         @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -3080,7 +3080,7 @@ model HostingUserBlock {
   blockerId     Int      @map("blocker_id") // 托管用户
   blockedUserId Int      @map("blocked_user_id") // 被拉黑用户
   remark        String?
-  createdAt     DateTime @default(now()) @map("created_at")
+  createdAt     DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
 
   blocker     User @relation("HostingBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
   blockedUser User @relation("HostingBlockedUser", fields: [blockedUserId], references: [id], onDelete: Cascade)
@@ -3099,8 +3099,8 @@ model HostingZone {
   logoUrl   String   @map("logo_url") @db.Text
   sortOrder Int      @default(0) @map("sort_order")
   active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  updatedAt DateTime @db.Timestamptz(3) @updatedAt @map("updated_at")
 
   owner User @relation("HostingZoneOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
@@ -3117,8 +3117,8 @@ model ExportTask {
   userId          Int      @map("user_id")
   status          String   @default("creating") // creating | ready | downloading | completed | error
   error           String?
-  createdAt       DateTime @default(now()) @map("created_at")
-  expiresAt       DateTime @map("expires_at")
+  createdAt       DateTime @db.Timestamptz(3) @default(now()) @map("created_at")
+  expiresAt       DateTime @db.Timestamptz(3) @map("expires_at")
 
   @@index([userId])
   @@index([expiresAt])
