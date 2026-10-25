@@ -20,6 +20,8 @@ const RULES: Rule[] = [
   // ── 实例生命周期 ──
   [/^Queued (\w+) task for instance "(.+?)"(?: on host "(.+?)")?(?: with image (.+))?$/i,
     (_m, _act, _name, _host, _img) => `已排队${actCn(_act)}任务：实例 "${_name}"${_host ? `，节点 "${_host}"` : ''}${_img ? `，镜像 ${_img}` : ''}`],
+  [/^Failed to (\w+) instance "(.+?)":\s*(.+)$/i, (_m, _a, _n, _e) => `${actCn(_a)}实例 "${_n}" 失败：${_e}`],
+  [/^Failed to (\w+) instance "(.+?)"$/i, (_m, _a, _n) => `${actCn(_a)}实例 "${_n}" 失败`],
   [/^Restarted instance "(.+?)"$/i, '重启实例 "$1"'],
   [/^Started instance "(.+?)"$/i, '启动实例 "$1"'],
   [/^Stopped instance "(.+?)"$/i, '停止实例 "$1"'],
