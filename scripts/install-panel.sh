@@ -651,6 +651,8 @@ generate_env() {
 NODE_ENV=production
 HOST=127.0.0.1
 PORT=${DEFAULT_PORT}
+# 时区（影响定时任务与日志时间）
+TZ=Asia/Shanghai
 
 # ============ 数据库配置 ============
 DATABASE_URL=postgresql://incudal:${db_password}@127.0.0.1:5432/incudal
@@ -743,6 +745,9 @@ User=${RUN_USER}
 Group=${RUN_USER}
 WorkingDirectory=${INSTALL_DIR}
 EnvironmentFile=${ENV_FILE}
+
+# 时区（node-cron 的 0 3 * * * 之类按这个时区跑）
+Environment=TZ=Asia/Shanghai
 
 # 确保 npm 缓存目录可写
 Environment=HOME=${INSTALL_DIR}

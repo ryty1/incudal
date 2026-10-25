@@ -324,6 +324,8 @@ services:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - PORT=3000
+      # 面板时区（影响 node-cron 定时任务与日志时间）
+      - TZ=${TZ:-Asia/Shanghai}
       - DATABASE_URL=postgresql://${POSTGRES_USER:-incudal}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-incudal}
       - REDIS_URL=redis://:${REDIS_PASSWORD:-}@redis:6379
       - JWT_SECRET=${JWT_SECRET}
