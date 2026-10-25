@@ -188,75 +188,10 @@ export default async function botBridgeRoutes(fastify: FastifyInstance) {
         id: true, name: true, userId: true, status: true, expiresAt: true,
         ipv4: true, ipv6: true, sshPort: true, billingCycle: true,
         billingPrice: true, autoRenew: true, suspendedAt: true, suspendReason: true,
-        hostId: true,
       },
     })
 
     if (!rows.length) return { items: [], checkedAt: now.toISOString(), days }
-
-    // 入口地址：机器人提醒里要告诉用户「续的是哪条线」，所以要带上节点公网 IP + 端口映射
-    const hostIds = Array.from(new Set(rows.map((r) => Number(r.hostId) || 0).filter((n) => n > 0)))
-    const [hostRows, mappingRows] = await Promise.all([
-      hostIds.length
-        ? prisma.prisma.host.findMany({
-            where: { id: { in: hostIds } },
-            select: { id: true, name: true, natPublicIp: true, natPublicIpv6: true, ipAddress: true },
-          })
-        : Promise.resolve([] as Array<{ id: number; name: string; natPublicIp: string | null; natPublicIpv6: string | null; ipAddress: string | null }>),
-      prisma.prisma.portMapping.findMany({
-        where: { instanceId: { in: rows.map((r) => r.id) } },
-        select: { instanceId: true, protocol: true, publicPort: true, privatePort: true, remark: true },
-        orderBy: { publicPort: 'asc' },
-      }),
-    ])
-    const hostMap = new Map(hostRows.map((h) => [h.id, h]))
-    const mapByInstance = new Map<number, typeof mappingRows>()
-    for (const m of mappingRows) {
-      const list = mapByInstance.get(m.instanceId) ?? []
-      list.push(m)
-      mapByInstance.set(m.instanceId, list)
-    }
-
-    /** 组装「这台实例怎么连」：SSH 入口 + 端口映射入口 */
-    const buildAccess = (row: typeof rows[number]) => {
-      const host = hostMap.get(Number(row.hostId) || 0)
-      const hostIp = host?.natPublicIp || host?.ipAddress || null
-      const hostIpv6 = host?.natPublicIpv6 || null
-      const sshPort = row.sshPort ?? null
-      const ssh = hostIp && sshPort ? `${hostIp}:${sshPort}` : null
-      const sshV6 = hostIpv6 && sshPort ? `[${hostIpv6}]:${sshPort}` : null
-
-      const endpoints = (mapByInstance.get(row.id) ?? []).map((m) => ({
-        protocol: String(m.protocol),
-        publicPort: m.publicPort,
-        privatePort: m.privatePort,
-        remark: m.remark ?? null,
-        endpoint: hostIp ? `${hostIp}:${m.publicPort}` : null,
-        endpointV6: hostIpv6 ? `[${hostIpv6}]:${m.publicPort}` : null,
-      }))
-
-      // 给机器人直接拼文案用：优先端口映射，没有映射就退回 SSH 入口
-      const parts = endpoints.slice(0, 6).map((e) => {
-        const addr = e.endpoint || e.endpointV6 || ''
-        const target = `${e.privatePort}/${e.protocol}`
-        const note = e.remark ? `（${e.remark}）` : ''
-        return addr ? `${addr} → ${target}${note}` : target
-      })
-      if (!parts.length && ssh) parts.push(`SSH ${ssh}`)
-      const summary = parts.join('，')
-      const more = endpoints.length > 6 ? ` 等 ${endpoints.length} 个端口` : ''
-
-      return {
-        hostName: host?.name ?? null,
-        ipv4: row.ipv4 ?? null,
-        ipv6: row.ipv6 ?? null,
-        ssh,
-        sshV6,
-        endpoints,
-        portCount: endpoints.length,
-        summary: summary ? `${summary}${more}` : null,
-      }
-    }
 
     const userIds = Array.from(new Set(rows.map((r) => r.userId)))
     const bindings = await prisma.prisma.userTelegramBinding.findMany({
@@ -272,7 +207,6 @@ export default async function botBridgeRoutes(fastify: FastifyInstance) {
         const bind = bindMap.get(row.userId)
         return {
           ...toInstanceView(row),
-          access: buildAccess(row),
           expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
           telegram: bind
             ? {
