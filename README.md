@@ -147,6 +147,13 @@ openssl rand -hex 32
 ```bash
 cd /home/docker/incudal
 
+# ① 先装备份环境（目录 / 配置 / 脚本 / 触发器 cron）
+#    必须在 docker compose up 之前跑：compose 把 /srv/incudal-backup.conf 以「文件」形式
+#    挂进容器，宿主机上这个路径不存在时 Docker 会把它建成**目录**，之后面板保存备份配置
+#    就会 EISDIR 报错。脚本会自动识别仓库路径（换目录 clone 也没问题）。
+sudo bash scripts/install-backup.sh
+
+# ② 构建并启动
 docker compose build app          # 首次约 3~8 分钟（看机器性能）
 docker compose up -d              # 启动 app + db + redis
 
@@ -157,6 +164,9 @@ for i in $(seq 1 30); do
   sleep 3
 done
 ```
+
+> 容器启动时会自动执行 `prisma migrate deploy`（见 `server/docker-entrypoint.sh`），
+> 新库直接建表，不用手工跑迁移。
 
 ### 4. 初始化数据库
 
@@ -590,6 +600,28 @@ DNAT 同步 reconciler（只增不减、表名自动识别、规则建完即删�
 机器人商城上下架同步模式（按面板容量与节点状态自动上下架）
 全平台禁止把 API 绑定到 0.0.0.0
 Service Worker 缓存版本管理（避免前端改动不生效）
+```
+
+### 8. 节点延迟探针（新增）
+```
+节点侧 agent（v0.0.3+）每分钟探测一次中国大陆三网：
+  广东 / 上海 × 联通 / 移动 / 电信 × IPv4 / IPv6，TCP:80
+另有两个出站自检对照点：cn-bd-v4（百度）、us-cf-v4（1.1.1.1）
+只探节点自身支持的协议族（有全局 IPv6 才测 v6）
+
+数据落 host_latency_samples，保留 7 天，上报时自动清理
+展示位置：创建实例的节点卡片（延迟按钮 + 弹窗）、后台节点详情、用户端实例详情
+曲线支持 1h / 6h / 24h，自动切到有数据的协议族
+agent 升级：心跳发现版本落后会自动拉 /api/agent/binary/<name>，无需手动重装
+
+二进制在 server/agent-dist/（双架构，compose 已挂载进容器）
+重新编译：
+  cd agent
+  GOOS=linux GOARCH=amd64 go build -ldflags "-s -w -X main.version=v0.0.3" \
+    -o ../server/agent-dist/incudal-agent-linux-amd64 .
+  GOOS=linux GOARCH=arm64 go build -ldflags "-s -w -X main.version=v0.0.3" \
+    -o ../server/agent-dist/incudal-agent-linux-arm64 .
+  然后更新 server/agent-dist/manifest.json 的 version / sha256 / size / generatedAt
 ```
 
 ---
