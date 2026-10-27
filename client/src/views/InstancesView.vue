@@ -18,6 +18,7 @@ import DistroIcon from '@/components/icons/DistroIcon.vue'
 import InstanceDisplayIcon from '@/components/InstanceDisplayIcon.vue'
 import InstanceOrderMenu from '@/components/instance/InstanceOrderMenu.vue'
 import { freeSiteCopy, getFreeSiteBillingCycleLabel } from '@/utils/freeSiteFun'
+import { computeWallHostIds } from '@/utils/wallHosts'
 
 /** 周期文案统一：1→月 / 3→季 / 6→半年 / 12→年 */
 function cycleLabelOf(months: number, t: (k: string, p?: any) => string): string {
@@ -33,6 +34,23 @@ function cycleLabelOf(months: number, t: (k: string, p?: any) => string): string
 
 // 为 KeepAlive include 匹配定义组件名称（必须在所有 import 之后）
 defineOptions({ name: 'InstancesView' })
+
+// 「墙」标记：实例所在节点在线但 IPv4 三网探测点全超时
+const wallHostIds = ref<Set<number>>(new Set())
+
+async function loadWallFlags(): Promise<void> {
+  try {
+    wallHostIds.value = computeWallHostIds(await api.hosts.latencySummary())
+  } catch {
+    // 判定失败不影响列表
+  }
+}
+
+function isWallInstance(inst: unknown): boolean {
+  const anyInst = inst as { hostId?: number | null; host_id?: number | null }
+  const hostId = Number(anyInst?.hostId ?? anyInst?.host_id)
+  return !!hostId && wallHostIds.value.has(hostId)
+}
 
 type InstanceLayoutMode = 'list' | 'card'
 const INSTANCE_LAYOUT_STORAGE_KEY = 'incudal.instances.layout'
@@ -390,6 +408,7 @@ async function loadInstances(force = false): Promise<void> {
 
     const visibleIds = new Set(nextInstances.map(instance => instance.id))
     selectedIds.value = new Set([...selectedIds.value].filter(id => visibleIds.has(id)))
+    void loadWallFlags()
   } catch (error) {
     console.error('Failed to load instances:', error)
   } finally {
@@ -1550,11 +1569,18 @@ async function confirmBatchDestroy(): Promise<void> {
                     />
                   </div>
                   <div class="min-w-0">
-                    <div
-                      class="font-medium text-sm truncate"
-                      :class="themeStore.isDark ? 'text-gray-100' : 'text-gray-900'"
-                    >
-                      {{ instance.name }}
+                    <div class="flex items-center gap-1.5 min-w-0">
+                      <span
+                        v-if="isWallInstance(instance)"
+                        class="wall-stamp"
+                        title="所在节点在线，但 IPv4 到大陆三网全部超时（疑似被墙）"
+                      >墙</span>
+                      <div
+                        class="font-medium text-sm truncate"
+                        :class="themeStore.isDark ? 'text-gray-100' : 'text-gray-900'"
+                      >
+                        {{ instance.name }}
+                      </div>
                     </div>
                     <div
                       class="text-xs truncate"
@@ -1777,6 +1803,11 @@ async function confirmBatchDestroy(): Promise<void> {
                 </div>
                 <div class="flex-1 min-w-0 cursor-pointer" @click="openInstanceDetail(instance.id)">
                   <div class="flex items-center gap-2 mb-1">
+                    <span
+                      v-if="isWallInstance(instance)"
+                      class="wall-stamp"
+                      title="所在节点在线，但 IPv4 到大陆三网全部超时（疑似被墙）"
+                    >墙</span>
                     <div
                       class="font-semibold truncate"
                       :class="themeStore.isDark ? 'text-gray-100' : 'text-gray-900'"
@@ -2649,5 +2680,24 @@ async function confirmBatchDestroy(): Promise<void> {
   .instance-card-order-move {
     transition-duration: 1ms;
   }
+}
+/* 「墙」圆形印章：统一放在实例名左侧 */
+.wall-stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid #dc2626;
+  border-radius: 9999px;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1;
+  transform: rotate(-8deg);
+  pointer-events: none;
+  user-select: none;
 }
 </style>

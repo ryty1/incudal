@@ -2385,10 +2385,8 @@ function formatShortDate(dateStr: string | null | undefined): string {
           <div class="min-w-0">
             <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
               <div :class="['w-2.5 h-2.5 rounded-full flex-shrink-0', getStatusInfo(instance.status, t).dot]"></div>
-              <div class="relative inline-flex min-w-0 max-w-full">
-                <h1 class="page-title max-w-full truncate">{{ instance.name }}</h1>
-                <span v-if="instanceWall" class="wall-stamp-lg" title="所在节点在线，但 IPv4 到大陆三网全部超时（疑似被墙）">墙！</span>
-              </div>
+              <span v-if="instanceWall" class="wall-stamp wall-stamp-lg" title="所在节点在线，但 IPv4 到大陆三网全部超时（疑似被墙）">墙</span>
+              <h1 class="page-title max-w-full truncate">{{ instance.name }}</h1>
               <span :class="['badge', getStatusInfo(instance.status, t).class]">
                 {{ getStatusInfo(instance.status, t).label }}
               </span>
@@ -3694,26 +3692,30 @@ function formatShortDate(dateStr: string | null | undefined): string {
 </template>
 
 <style scoped>
-/* 「墙」印章：盖在实例名上，不挡点击 */
-.wall-stamp-lg {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(-12deg);
-  padding: 2px 9px;
-  border: 2px solid rgba(220, 38, 38, 0.8);
-  border-radius: 5px;
-  color: rgba(220, 38, 38, 0.92);
-  background: rgba(220, 38, 38, 0.07);
-  font-size: 20px;
+/* 「墙」圆形印章：统一放在名称左侧 */
+.wall-stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid #dc2626;
+  border-radius: 9999px;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
+  font-size: 13px;
   font-weight: 900;
-  letter-spacing: 0.12em;
-  line-height: 1.15;
-  white-space: nowrap;
+  line-height: 1;
+  transform: rotate(-8deg);
   pointer-events: none;
   user-select: none;
-  z-index: 2;
-  opacity: 0.95;
-  text-shadow: 0 0 1px rgba(220, 38, 38, 0.35);
+}
+
+.wall-stamp-lg {
+  width: 26px;
+  height: 26px;
+  font-size: 16px;
+  border-width: 2px;
 }
 </style>

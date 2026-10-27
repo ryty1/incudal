@@ -471,6 +471,9 @@ export default async function instanceRoutes(fastify: FastifyInstance) {
           instanceType: instance.package_instance_type === 'vm' ? 'vm' : 'container'
         }
 
+        // 节点「墙」判定需要实例所在节点（实例详情页本来就返回 hostId）
+        response.hostId = instance.host_id
+
         // Include user information for host owner or admin query
         if (showUserInfo) {
           response.username = instance.username
@@ -478,7 +481,6 @@ export default async function instanceRoutes(fastify: FastifyInstance) {
           response.userAvatarStyle = instance.user_avatar_style
           response.userAvatarBadgeId = (instance as { user_avatar_badge_id?: string | null }).user_avatar_badge_id ?? null
           response.userId = instance.user_id
-          response.hostId = instance.host_id
         }
 
         return response

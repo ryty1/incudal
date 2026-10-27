@@ -598,12 +598,15 @@ onUnmounted(() => {
               <td class="px-4 py-3 whitespace-nowrap">
                 <div class="flex items-center gap-2">
                   <FlagIcon :code="host.countryCode" size="sm" />
-                  <div class="relative">
-                    <div
-                      class="font-medium"
-                      :class="themeStore.isDark ? 'text-gray-200' : 'text-gray-900'"
-                    >
-                      {{ host.name?.toUpperCase() || host.name }}
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-1.5">
+                      <span v-if="isWall(host)" class="wall-stamp" title="节点在线，但 IPv4 三网探测点全部超时（疑似被墙）">墙</span>
+                      <div
+                        class="font-medium"
+                        :class="themeStore.isDark ? 'text-gray-200' : 'text-gray-900'"
+                      >
+                        {{ host.name?.toUpperCase() || host.name }}
+                      </div>
                     </div>
                     <div
                       class="text-xs"
@@ -611,7 +614,6 @@ onUnmounted(() => {
                     >
                       {{ host.location || host.url }}
                     </div>
-                    <span v-if="isWall(host)" class="wall-stamp" title="节点在线，但 IPv4 三网探测点全部超时（疑似被墙）">墙！</span>
                   </div>
                 </div>
               </td>
@@ -781,26 +783,23 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* 「墙」印章遮罩：盖在节点名 + 地址上，不挡点击 */
+/* 「墙」圆形印章：统一放在名称左侧 */
 .wall-stamp {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) rotate(-14deg);
-  padding: 1px 7px;
-  border: 2px solid rgba(220, 38, 38, 0.8);
-  border-radius: 4px;
-  color: rgba(220, 38, 38, 0.92);
-  background: rgba(220, 38, 38, 0.07);
-  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid #dc2626;
+  border-radius: 9999px;
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
+  font-size: 12px;
   font-weight: 900;
-  letter-spacing: 0.12em;
-  line-height: 1.15;
-  white-space: nowrap;
+  line-height: 1;
+  transform: rotate(-8deg);
   pointer-events: none;
   user-select: none;
-  z-index: 2;
-  opacity: 0.95;
-  text-shadow: 0 0 1px rgba(220, 38, 38, 0.35);
 }
 </style>
