@@ -104,6 +104,31 @@ function handlePageSizeChange() {
 // 记录是否已经首次加载
 let hasInitialLoad = false
 
+// 「墙」印章：节点在线，但 IPv4 三网探测点全部 100% 超时（纯 IPv6 节点无 v4 采样，不会命中）
+const wallHostIds = ref(new Set())
+
+async function loadWallFlags() {
+  try {
+    const res = await api.hosts.latencySummary()
+    const byHost = res.hosts || {}
+    const ids = new Set()
+    for (const [hostId, probes] of Object.entries(byHost)) {
+      // 只算三网探测点（gd-/sh-），排除 cn-bd / us-cf 这两个出站自检
+      const v4 = Object.entries(probes || {})
+        .filter(([key]) => key.endsWith('-v4') && (key.startsWith('gd-') || key.startsWith('sh-')))
+      if (!v4.length) continue
+      if (v4.every(([, v]) => (v && v.lossPct != null ? v.lossPct : 0) >= 100)) ids.add(Number(hostId))
+    }
+    wallHostIds.value = ids
+  } catch {
+    // 判定失败不影响列表
+  }
+}
+
+function isWall(host) {
+  return host?.status === 'online' && wallHostIds.value.has(host.id)
+}
+
 // 加载宿主机列表
 async function loadHosts() {
   loading.value = true
@@ -112,6 +137,7 @@ async function loadHosts() {
     hosts.value = res.hosts || []
     total.value = res.total || 0
     totalPages.value = res.totalPages || 1
+    void loadWallFlags()
   } catch (err) {
     toast.error(err.message)
   } finally {
@@ -172,6 +198,7 @@ async function refreshHostStatusesSilently() {
         local.instanceCount = row.instanceCount
       }
     })
+    void loadWallFlags()
   } catch {
     // 轮询失败静默处理，下一轮再试
   }
@@ -579,7 +606,7 @@ onUnmounted(() => {
               <td class="px-4 py-3 whitespace-nowrap">
                 <div class="flex items-center gap-2">
                   <FlagIcon :code="host.countryCode" size="sm" />
-                  <div>
+                  <div class="relative">
                     <div
                       class="font-medium"
                       :class="themeStore.isDark ? 'text-gray-200' : 'text-gray-900'"
@@ -592,6 +619,7 @@ onUnmounted(() => {
                     >
                       {{ host.location || host.url }}
                     </div>
+                    <span v-if="isWall(host)" class="wall-stamp" title="节点在线，但 IPv4 三网探测点全部超时（疑似被墙）">墙！</span>
                   </div>
                 </div>
               </td>
@@ -759,3 +787,28 @@ onUnmounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* 「墙」印章遮罩：盖在节点名 + 地址上，不挡点击 */
+.wall-stamp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-14deg);
+  padding: 1px 7px;
+  border: 2px solid rgba(220, 38, 38, 0.8);
+  border-radius: 4px;
+  color: rgba(220, 38, 38, 0.92);
+  background: rgba(220, 38, 38, 0.07);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.15;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+  opacity: 0.95;
+  text-shadow: 0 0 1px rgba(220, 38, 38, 0.35);
+}
+</style>
