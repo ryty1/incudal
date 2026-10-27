@@ -10,6 +10,7 @@ import { useThemeStore } from '@/stores/theme'
 import { useAuthStore } from '@/stores/auth'
 import FlagIcon from '@/components/FlagIcon.vue'
 import { translateError } from '@/utils/errorHandler'
+import { computeWallHostIds } from '@/utils/wallHosts'
 
 // 为 KeepAlive include 匹配定义组件名称（必须在所有 import 之后）
 defineOptions({ name: 'MyHostsView' })
@@ -110,16 +111,7 @@ const wallHostIds = ref(new Set())
 async function loadWallFlags() {
   try {
     const res = await api.hosts.latencySummary()
-    const byHost = res.hosts || {}
-    const ids = new Set()
-    for (const [hostId, probes] of Object.entries(byHost)) {
-      // 只算三网探测点（gd-/sh-），排除 cn-bd / us-cf 这两个出站自检
-      const v4 = Object.entries(probes || {})
-        .filter(([key]) => key.endsWith('-v4') && (key.startsWith('gd-') || key.startsWith('sh-')))
-      if (!v4.length) continue
-      if (v4.every(([, v]) => (v && v.lossPct != null ? v.lossPct : 0) >= 100)) ids.add(Number(hostId))
-    }
-    wallHostIds.value = ids
+    wallHostIds.value = computeWallHostIds(res)
   } catch {
     // 判定失败不影响列表
   }

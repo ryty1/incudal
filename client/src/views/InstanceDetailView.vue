@@ -41,6 +41,7 @@ const InstanceBadgeModal = defineAsyncComponent(() => import('@/components/insta
 import AnnouncementIcon from '@/components/icons/AnnouncementIcon.vue'
 import { getStatusInfo } from '@/utils/formatters'
 import { translateError } from '@/utils/errorHandler'
+import { computeWallHostIds } from '@/utils/wallHosts'
 import { freeSiteCopy, getFreeSiteBillingCycleLabel, getFreeSiteBillingCycleShort } from '@/utils/freeSiteFun'
 import type { Instance, InstanceWithDetails, Snapshot, UserQuota, UpdateInstanceRequest, Package, CloudInitState, CloudInitStatusResponse } from '@/types/api'
 
@@ -96,6 +97,8 @@ const activeTab = ref<TabType>('info')
 const latencySeries = ref<Record<string, Array<{ t: string; ms: number | null; loss: number }>>>({})
 const latencyMinutes = ref(60)
 const latencyLoading = ref(false)
+/** 该实例所在节点是否「被墙」（在线但 IPv4 三网探测点全超时） */
+const instanceWall = ref(false)
 let latencyTimer: number | null = null
 
 async function loadInstanceLatency() {
@@ -103,8 +106,12 @@ async function loadInstanceLatency() {
   if (!hostId) return
   latencyLoading.value = true
   try {
-    const res = await api.hosts.latencyHistory(Number(hostId), latencyMinutes.value)
+    const [res, summary] = await Promise.all([
+      api.hosts.latencyHistory(Number(hostId), latencyMinutes.value),
+      api.hosts.latencySummary().catch(() => null)
+    ])
     latencySeries.value = res.series || {}
+    instanceWall.value = summary ? computeWallHostIds(summary).has(Number(hostId)) : false
   } catch {
     // 失败保留旧数据
   } finally {
@@ -2378,7 +2385,10 @@ function formatShortDate(dateStr: string | null | undefined): string {
           <div class="min-w-0">
             <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
               <div :class="['w-2.5 h-2.5 rounded-full flex-shrink-0', getStatusInfo(instance.status, t).dot]"></div>
-              <h1 class="page-title max-w-full truncate">{{ instance.name }}</h1>
+              <div class="relative inline-flex min-w-0 max-w-full">
+                <h1 class="page-title max-w-full truncate">{{ instance.name }}</h1>
+                <span v-if="instanceWall" class="wall-stamp-lg" title="所在节点在线，但 IPv4 到大陆三网全部超时（疑似被墙）">墙！</span>
+              </div>
               <span :class="['badge', getStatusInfo(instance.status, t).class]">
                 {{ getStatusInfo(instance.status, t).label }}
               </span>
@@ -3682,3 +3692,28 @@ function formatShortDate(dateStr: string | null | undefined): string {
     />
   </div>
 </template>
+
+<style scoped>
+/* 「墙」印章：盖在实例名上，不挡点击 */
+.wall-stamp-lg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-12deg);
+  padding: 2px 9px;
+  border: 2px solid rgba(220, 38, 38, 0.8);
+  border-radius: 5px;
+  color: rgba(220, 38, 38, 0.92);
+  background: rgba(220, 38, 38, 0.07);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1.15;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
+  opacity: 0.95;
+  text-shadow: 0 0 1px rgba(220, 38, 38, 0.35);
+}
+</style>
