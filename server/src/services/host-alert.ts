@@ -32,6 +32,22 @@ function hostFromUrl(url: string): string {
     }
 }
 
+/**
+ * 通知里的 IP 脱敏：IPv4 保留前两段，IPv6 保留前两组。
+ * 群里只需要能对上号，不需要完整地址。
+ */
+export function maskIp(ip: string): string {
+    const value = (ip || '').trim().replace(/^\[|\]$/g, '')
+    if (!value) return ''
+    if (value.includes(':')) {
+        const groups = value.split(':').filter(Boolean)
+        return groups.length >= 2 ? `${groups[0]}:${groups[1]}:***:***` : '***'
+    }
+    const parts = value.split('.')
+    if (parts.length === 4) return `${parts[0]}.${parts[1]}.***.***`
+    return '***'
+}
+
 function formatTime(): string {
     try {
         return new Date().toLocaleString('zh-CN', {
@@ -87,7 +103,7 @@ export async function notifyHostStatusChange(status: HostAlertStatus, host: Host
             '',
             `节点：${escapeHtml(host.name)}`,
             host.location ? `位置：${escapeHtml(host.location)}` : '',
-            ip ? `IP：<code>${escapeHtml(ip)}</code>` : '',
+            ip ? `IP：<code>${escapeHtml(maskIp(ip))}</code>` : '',
             `时间：${formatTime()}`
         ].filter(Boolean)
 
