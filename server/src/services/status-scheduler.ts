@@ -20,6 +20,7 @@ import { isHostHealthy, recordHostSuccess, recordHostError, getAllHostHealth } f
 import { getInstanceState } from '../lib/incus/incus-instances.js'
 import { mapInstanceStatus } from '../lib/incus/incus-utils.js'
 import { sendNotification } from '../lib/notifier.js'
+import { notifyHostStatusChange } from './host-alert.js'
 import * as db from '../db/index.js'
 import { createLog } from '../db/logs.js'
 
@@ -160,6 +161,7 @@ async function checkHostsConnectivity(): Promise<void> {
                             `节点恢复在线：${host.name}${host.location ? `（${host.location}）` : ''}`,
                             'success'
                         ).catch(() => { /* 日志失败不影响主流程 */ })
+                        void notifyHostStatusChange('online', host)
                     }
                 } catch (error) {
                     recordHostError(host.id)
@@ -192,6 +194,7 @@ async function checkHostsConnectivity(): Promise<void> {
                                 `节点${tcpOk ? '异常' : '离线'}：${host.name}${host.location ? `（${host.location}）` : ''}`,
                                 'partial'
                             ).catch(() => { /* 日志失败不影响主流程 */ })
+                            void notifyHostStatusChange(tcpOk ? 'abnormal' : 'offline', host)
                         }
                     }
                 }
